@@ -67,7 +67,20 @@ class API1
             $secrets = json_decode(file_get_contents($this->oauthCacheFile));
             static::$session = new Session(...$secrets);
         } else {
-            static::$session = Session::authorize($client, $identifier, $secret);
+            $tries = 0;
+
+            while ($tries < 5) {
+                try {
+                    static::$session = Session::authorize($client, $identifier, $secret);
+                    break; // Success, break while
+                } catch (Exception $e) {
+                    if ($tries++ < 5) {
+                        sleep($tries);
+                    } else {
+                        throw new Exception('Session creation failed, ' . $e->getMessage());
+                    }
+                }
+            }
 
             // Save if a cache file name is given
             if ($this->oauthCacheFile) {

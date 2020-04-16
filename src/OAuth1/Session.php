@@ -115,7 +115,10 @@ final class Session
         parse_str($res, $res);
 
         if (!isset($res['oauth_verifier'])) {
-            throw new Exception('Authorize user failed (3)');
+            throw new Exception(
+                'Authorize user failed (3)' .
+                json_encode(self::$curlInfo[count(self::$curlInfo) - 1])
+            );
         }
 
         $oauthVerifier = $res['oauth_verifier'];
@@ -136,7 +139,10 @@ final class Session
         parse_str($res, $res);
 
         if (!isset($res['oauth_token'], $res['oauth_token_secret'])) {
-            throw new Exception('Get access token failed (4)');
+            throw new Exception(
+                'Get access token failed (4)' .
+                json_encode(self::$curlInfo[count(self::$curlInfo) - 1])
+            );
         }
 
         return new self($consumerKey, $consumerSecret, $res['oauth_token'], $res['oauth_token_secret']);
@@ -181,10 +187,9 @@ final class Session
      * Basic OAuth fields
      *
      * @param  string  $consumerKey
-     * @param  array   $fields
      * @return array
      */
-    public static function getBaseOauthFields($consumerKey, $fields = [])
+    public static function getBaseOauthFields($consumerKey)
     {
         /**
          * Build unique nonce
