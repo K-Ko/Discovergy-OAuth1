@@ -1,0 +1,26 @@
+{
+    "name": "K-Ko/Discovergy-OAuth1",
+    "type": "library",
+    "description": "Discovergy API client",
+    "keywords": [
+        "Discovergy",
+        "API",
+        "OAuth1"
+    ],
+    "homepage": "https://github.com/K-Ko/discovergy-oauth1",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Knut Kohl",
+            "email": "github@knutkohl.de"
+        }
+    ],
+    "require": {
+        "php": ">=7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "KKo\\": "src/"
+        }
+    }
+}
