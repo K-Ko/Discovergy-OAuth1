@@ -50,31 +50,30 @@ class API1
         $meterCacheFile = '',
         $meterTTL = 0
     ) {
-        $this->client     = $client;
-        $this->identifier = $identifier;
-        $this->secret     = $secret;
+        // Clear file status cache
+        clearstatcache();
 
         // OAuth data
-        $this->oauthCacheFile = $oauthCacheFile;
-
-        if (is_file($this->oauthCacheFile) && filemtime($this->oauthCacheFile) < time() - $oauthTTL) {
+        if (is_file($oauthCacheFile) && filemtime($oauthCacheFile) < time() - $oauthTTL) {
             // Force re-read
-            unlink($this->oauthCacheFile);
+            unlink($oauthCacheFile);
         }
 
-        if (is_file($this->oauthCacheFile)) {
-            // Simple one value per line file
-            $secrets = json_decode(file_get_contents($this->oauthCacheFile));
+        if (is_file($oauthCacheFile)) {
+            // Simple array
+            $secrets = json_decode(file_get_contents($oauthCacheFile));
             static::$session = new Session(...$secrets);
         } else {
             $tries = 0;
 
-            while ($tries < 5) {
+            while (true) {
                 try {
+                    $tries++;
                     static::$session = Session::authorize($client, $identifier, $secret);
                     break; // Success, break while
                 } catch (Exception $e) {
-                    if ($tries++ < 5) {
+                    if ($tries < 5) {
+                        // Sleep a bit to give API chance to answer
                         sleep($tries);
                     } else {
                         throw new Exception('Session creation failed, ' . $e->getMessage());
@@ -83,29 +82,30 @@ class API1
             }
 
             // Save if a cache file name is given
-            if ($this->oauthCacheFile) {
-                file_put_contents($this->oauthCacheFile, json_encode(static::$session->getSecrets()));
+            if ($oauthCacheFile) {
+                file_put_contents($oauthCacheFile, json_encode(static::$session->getSecrets()));
             }
         }
 
-        // Meters data
         $this->meterCacheFile = $meterCacheFile;
-
-        if ($this->meterCacheFile) {
-            if (is_file($this->meterCacheFile) && filemtime($this->meterCacheFile) < time() - $meterTTL) {
-                // Force re-read
-                unlink($this->meterCacheFile);
-            }
-        }
     }
 
     /**
      * Read all known meters from DC
+     *
+     * @return array
      */
     public function getMeters()
     {
         // Lazy load
         if (empty($this->meters)) {
+            if ($this->meterCacheFile) {
+                if (is_file($this->meterCacheFile) && filemtime($this->meterCacheFile) < time() - $meterTTL) {
+                    // Force re-read
+                    unlink($this->meterCacheFile);
+                }
+            }
+
             if (is_file($this->meterCacheFile)) {
                 $this->meters = json_decode(file_get_contents($this->meterCacheFile));
             } else {
@@ -136,7 +136,10 @@ class API1
     }
 
     /**
+     * Get meter details
      *
+     * @param  string $meterId
+     * @return \stdClass
      */
     public function getMeter($meterId)
     {
@@ -150,6 +153,7 @@ class API1
         $meterCount = count($meters);
 
         foreach ($meters as &$m) {
+            // Check posible fields for a meter Id
             if ($m->serialNumber === $meterId || $m->fullSerialNumber === $meterId || $m->meterId === $meterId) {
                 return $m;
             }
@@ -175,6 +179,11 @@ class API1
      * - /website_access_code
      * Virtual meters
      * - /virtual_meters
+     *
+     * @throws BadMethodCallException
+     * @param  string $name Method called
+     * @param  array  $arguments Method arguments
+     * @return mixed
      */
     public function __call($name, $arguments)
     {
@@ -185,20 +194,27 @@ class API1
                 throw new BadMethodCallException('Required: ' . __CLASS__ . '::' . $name . '(array $params)');
             }
 
-            return json_decode(static::$session->get($this->baseUrl . '/' . $endpoint, $arguments[0]));
+            return $this->get($endpoint, $arguments[0]);
         }
 
         throw new BadMethodCallException('Invalid method call: ' . __CLASS__ . '::' . $name . '()');
     }
 
+    /**
+     * Generic GET caller
+     *
+     * @param string $endpoint
+     * @param array $params
+     * @return mixed
+     */
+    public function get($endpoint, array $params = [])
+    {
+        return json_decode(static::$session->get($this->baseUrl . '/' . $endpoint, $params));
+    }
+
     // --------------------------------------------------------------------
     // PRIVATE
     // --------------------------------------------------------------------
-
-    /**
-     * @var string
-     */
-    private $oauthCacheFile = '';
 
     /**
      * @var string
