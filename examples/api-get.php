@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 /**
  *
@@ -21,7 +22,6 @@ if ($argc < 4) {
     );
 }
 
-$client     = 'discovergy-oauth1-example';
 $identifier = $argv[1];
 $secret     = $argv[2];
 $endpoint   = $argv[3];
@@ -29,26 +29,37 @@ $args       = array_slice($argv, 4);
 
 $params = [];
 
+// Prepare STDERR output stream
+$fh = fopen('php://stderr', 'a');
+
 foreach ($args as $arg) {
     @list($param, $value) = explode('=', $arg, 2);
+    if ($param == 'from' || $param == 'to') {
+        if (!is_numeric($value)) {
+            fwrite($fh, "::: PARAM: $param: $value > ");
+            $value = strtotime($value) * 1000;
+            $d = date('r', $value / 1000);
+            fwrite($fh, "$value ($d)\n");
+        }
+    }
     $params[$param] = $value;
 }
 
 try {
-    $api = new KKo\Discovergy\API1($client, $identifier, $secret);
+    $api = new KKo\Discovergy\API1('kko-discovergy-oauth1', $identifier, $secret);
+    fwrite($fh, "::: got a valid session\n");
 } catch (Exception $e) {
-    die($e->getMessage());
+    fwrite($fh, "::: ERROR: " . $e->getMessage());
+    exit;
 }
 
-$fh = fopen('php://stderr', 'a');
-fwrite($fh, "::: Ok, have a valid session\n");
 fwrite($fh, "::: Fetch endpoint /$endpoint ...\n");
 
 $res = $api->get($endpoint, $params);
 
 if ($res) {
-    die(json_encode($res));
+    echo json_encode($res);
+} else {
+    fwrite($fh, "::: ERROR\n");
+    fwrite($fh, implode(PHP_EOL, $api::$session::$debug));
 }
-
-fwrite($fh, "::: ERROR\n");
-fwrite($fh, implode(PHP_EOL, $api::$session::$debug));

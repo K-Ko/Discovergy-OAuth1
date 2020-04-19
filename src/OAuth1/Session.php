@@ -22,14 +22,14 @@ final class Session
     public static $baseUrl = 'https://api.discovergy.com/public/v1';
 
     /**
-     * @var array
-     */
-    public static $curlInfo = [];
-
-    /**
      * @var array Debug messages
      */
     public static $debug = [];
+
+    /**
+     * @var array
+     */
+    public static $curlInfo = [];
 
     /**
      * Class constructor
@@ -67,10 +67,7 @@ final class Session
         $res    = json_decode(self::curlPost($url, $fields), true);
 
         if (!isset($res['key'], $res['secret'])) {
-            throw new Exception(
-                'Get customer token failed (1) ' .
-                json_encode(self::$curlInfo[count(self::$curlInfo) - 1])
-            );
+            throw new Exception('Get customer token failed (1) ' . json_encode(self::getLastCurlInfo()));
         }
 
         $consumerKey    = $res['key'];
@@ -82,6 +79,7 @@ final class Session
 
         $url    = self::$baseUrl . '/oauth1/request_token';
         $fields = self::getBaseOauthFields($consumerKey);
+
         $fields['oauth_signature'] = self::sign('POST', $url, $fields, $consumerSecret . '&');
 
         $res = self::curlPost($url, $fields);
@@ -89,10 +87,7 @@ final class Session
         parse_str($res, $res);
 
         if (!isset($res['oauth_token'], $res['oauth_token_secret'])) {
-            throw new Exception(
-                'Get request token failed (2) ' .
-                json_encode(self::$curlInfo[count(self::$curlInfo) - 1])
-            );
+            throw new Exception('Get request token failed (2) ' . json_encode(self::getLastCurlInfo()));
         }
 
         // Internal used for steps 3 & 4
@@ -115,10 +110,7 @@ final class Session
         parse_str($res, $res);
 
         if (!isset($res['oauth_verifier'])) {
-            throw new Exception(
-                'Authorize user failed (3)' .
-                json_encode(self::$curlInfo[count(self::$curlInfo) - 1])
-            );
+            throw new Exception('Authorize user failed (3) ' . json_encode(self::getLastCurlInfo()));
         }
 
         $oauthVerifier = $res['oauth_verifier'];
@@ -130,8 +122,9 @@ final class Session
         $url = self::$baseUrl . '/oauth1/access_token';
 
         $fields = self::getBaseOauthFields($consumerKey);
-        $fields['oauth_token']    = $token;
-        $fields['oauth_verifier'] = $oauthVerifier;
+        $fields['oauth_token']     = $token;
+        $fields['oauth_verifier']  = $oauthVerifier;
+
         $fields['oauth_signature'] = self::sign('POST', $url, $fields, $consumerSecret . '&' . $tokenSecret);
 
         $res = self::curlPost($url, $fields);
@@ -139,17 +132,22 @@ final class Session
         parse_str($res, $res);
 
         if (!isset($res['oauth_token'], $res['oauth_token_secret'])) {
-            throw new Exception(
-                'Get access token failed (4)' .
-                json_encode(self::$curlInfo[count(self::$curlInfo) - 1])
-            );
+            throw new Exception('Get access token failed (4) ' . json_encode(self::getLastCurlInfo()));
         }
 
         return new self($consumerKey, $consumerSecret, $res['oauth_token'], $res['oauth_token_secret']);
     }
 
     /**
-     *
+     * Get last cUrl info data
+     */
+    public static function getLastCurlInfo()
+    {
+        return count(self::$curlInfo) ? self::$curlInfo[count(self::$curlInfo) - 1] : null;
+    }
+
+    /**
+     * Needed for cache credentials extern for reuse
      */
     public function getSecrets()
     {
@@ -165,21 +163,21 @@ final class Session
      */
     public function get($url, $params = [])
     {
-        $fields = static::getBaseOauthFields($this->consumerKey);
+        $fields = self::getBaseOauthFields($this->consumerKey);
         $fields['oauth_token'] = $this->token;
         $fields = array_replace($fields, $params);
 
-        $fields['oauth_signature'] = static::sign(
+        $fields['oauth_signature'] = self::sign(
             'GET',
             $url,
             $fields,
             $this->consumerSecret . '&' . $this->tokenSecret
         );
 
-        return static::curlGet(
+        return self::curlGet(
             $url,
             $params,
-            ['Content-Type: application/json', static::OAuthHeader($fields)]
+            ['Content-Type: application/json', self::OAuthHeader($fields)]
         );
     }
 
@@ -234,13 +232,13 @@ final class Session
         $fields = urlencode(http_build_query($fields));
         $data   = "$set&$url&$fields";
 
-        static::dbg('SIGN', '>', $data);
+        self::dbg('SIGN', '>', $data);
 
         // Get binary and encode afterwards
         $hash = hash_hmac('sha1', $data, $secret, true);
         $hash = base64_encode($hash);
 
-        static::dbg('SIGN', '<', $hash);
+        self::dbg('SIGN', '<', $hash);
 
         return $hash;
     }
@@ -253,9 +251,9 @@ final class Session
      * @param  array          $headers
      * @return string
      */
-    public static function curlGet($url, $fields = '', $headers = [])
+    public static function curlGet($url, $fields = null, $headers = null)
     {
-        return static::curlFetch(false, $url, $fields, $headers);
+        return self::curlFetch(false, $url, $fields, $headers);
     }
 
     /**
@@ -266,9 +264,9 @@ final class Session
      * @param  array         $headers
      * @return string
      */
-    public static function curlPost($url, $fields = '', $headers = [])
+    public static function curlPost($url, $fields = null, $headers = null)
     {
-        return static::curlFetch(true, $url, $fields, $headers);
+        return self::curlFetch(true, $url, $fields, $headers);
     }
 
     // --------------------------------------------------------------------
@@ -294,7 +292,7 @@ final class Session
 
         $auth = 'Authorization: OAuth ' . implode(',', $auth);
 
-        static::dbg('HEAD', '-', $auth);
+        self::dbg('HEAD', '-', $auth);
 
         return $auth;
     }
@@ -323,31 +321,32 @@ final class Session
             return is_scalar($arg) ? $arg : json_encode($arg);
         }, $args);
 
-        static::$debug[] = sprintf('%-4s %s', $method, implode(' ', $args));
+        self::$debug[] = sprintf('%-4s %s', $method, implode(' ', $args));
     }
 
     /**
      * Fetch data via cUrl
      *
-     * @param bool $isPOST
-     * @param string $url
-     * @param array $fields
-     * @param array $headers
+     * @param  bool          $isPOST
+     * @param  string        $url
+     * @param  array|string  $fields
+     * @param  array         $headers
      * @return string
      */
-    private static function curlFetch($isPOST, $url, $fields = null, $headers = null)
+    private static function curlFetch($isPOST, $url, $fields, $headers)
     {
         $ch = curl_init();
 
         $method = $isPOST ? 'POST' : 'GET';
 
-        static::dbg($method, '>', $url);
+        self::dbg($method, '>', $url);
 
         if (!empty($headers)) {
-            static::dbg($method, '> Headers:', $headers);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            self::dbg($method, '> Headers:', $headers);
         }
 
-        static::dbg($method, '> Fields:', $fields);
+        self::dbg($method, '> Fields:', $fields);
 
         if (!$isPOST) {
             if ($fields) {
@@ -357,24 +356,23 @@ final class Session
                 $url .= '?' . $fields;
             }
         } else {
+            curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($fields));
         }
 
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_POST, $isPOST);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
         $ts  = -microtime(true);
         $res = curl_exec($ch);
         $ts += microtime(true);
 
-        static::$curlInfo[] = curl_getinfo($ch);
+        self::$curlInfo[] = curl_getinfo($ch);
 
         curl_close($ch);
 
-        static::dbg($method, '< curl', round($ts * 1000, 3), 'ms');
-        static::dbg($method, '<', $res);
+        self::dbg($method, '< curl', round($ts * 1000, 3), 'ms');
+        self::dbg($method, '<', $res);
 
         return $res;
     }

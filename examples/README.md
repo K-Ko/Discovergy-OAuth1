@@ -28,3 +28,15 @@ To fetch the last reading of a meter, use the `fullSerialNumber` provided by the
 To get the raw data for further processing redirect the STDERR
 
     php -f api-get.php <identifier> <secret> last_reading meterId=1234567890 2>/dev/null
+
+If a timestamp parameter is required, supply it as `unix timestamp * 1000`
+
+    php -f api-get.php <identifier> <secret> statistics meterId=1234567890 from=1587247200000
+
+or as string parsable by PHP [`strtotime()`](https://www.php.net/manual/en/function.strtotime.php)
+
+    php -f api-get.php <identifier> <secret> statistics meterId=1234567890 from='first day of this month midnight'
+
+The output will show the "calculated" value to check the correctness
+
+    ::: PARAM: from: first day of this month midnight > 1585692000000 (Wed, 01 Apr 2020 00:00:00 +0200)

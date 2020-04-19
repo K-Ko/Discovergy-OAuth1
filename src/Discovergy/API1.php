@@ -66,6 +66,7 @@ class API1
         } else {
             $tries = 0;
 
+            // Endles loop, break condition inside
             while (true) {
                 try {
                     $tries++;
@@ -150,12 +151,12 @@ class API1
             return null;
         }
 
-        $meterCount = count($meters);
-
-        foreach ($meters as &$m) {
-            // Check posible fields for a meter Id
-            if ($m->serialNumber === $meterId || $m->fullSerialNumber === $meterId || $m->meterId === $meterId) {
-                return $m;
+        foreach ($meters as &$meter) {
+            // Check posible fields for a valid meter Id
+            if ($meter->fullSerialNumber === $meterId ||
+                $meter->serialNumber === $meterId ||
+                $meter->meterId === $meterId) {
+                return $meter;
             }
         }
     }
@@ -188,6 +189,7 @@ class API1
     public function __call($name, $arguments)
     {
         if (preg_match('~^get(.*)$~', $name, $matches)) {
+            // Endpoint name from CamelCase to snake_case
             $endpoint = strtolower(trim(preg_replace('~[A-Z]~', '_$0', $matches[1]), '_'));
 
             if (!isset($arguments[0]) || !is_array($arguments[0])) {
