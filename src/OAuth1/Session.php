@@ -2,7 +2,7 @@
 /**
  *
  */
-namespace KKo\OAuth1;
+namespace OAuth1;
 
 /**
  *
@@ -62,12 +62,12 @@ final class Session
         // 1. Get consumer token
         // ------------------------------------------------------------------
 
-        $url    = self::$baseUrl . '/oauth1/consumer_token';
+        $url    = static::$baseUrl . '/oauth1/consumer_token';
         $fields = [ 'client' => $client ];
-        $res    = json_decode(self::curlPost($url, $fields), true);
+        $res    = json_decode(static::curlPost($url, $fields), true);
 
         if (!isset($res['key'], $res['secret'])) {
-            throw new Exception('Get customer token failed (1) ' . json_encode(self::getLastCurlInfo()));
+            throw new Exception('Get customer token failed (1) ' . json_encode(static::getLastCurlInfo()));
         }
 
         $consumerKey    = $res['key'];
@@ -77,17 +77,17 @@ final class Session
         // 2. Get request token
         // ------------------------------------------------------------------
 
-        $url    = self::$baseUrl . '/oauth1/request_token';
-        $fields = self::getBaseOauthFields($consumerKey);
+        $url    = static::$baseUrl . '/oauth1/request_token';
+        $fields = static::getBaseOauthFields($consumerKey);
 
-        $fields['oauth_signature'] = self::sign('POST', $url, $fields, $consumerSecret . '&');
+        $fields['oauth_signature'] = static::sign('POST', $url, $fields, $consumerSecret . '&');
 
-        $res = self::curlPost($url, $fields);
+        $res = static::curlPost($url, $fields);
 
         parse_str($res, $res);
 
         if (!isset($res['oauth_token'], $res['oauth_token_secret'])) {
-            throw new Exception('Get request token failed (2) ' . json_encode(self::getLastCurlInfo()));
+            throw new Exception('Get request token failed (2) ' . json_encode(static::getLastCurlInfo()));
         }
 
         // Internal used for steps 3 & 4
@@ -98,19 +98,19 @@ final class Session
         // 3. Authorize user
         // ------------------------------------------------------------------
 
-        $url    = self::$baseUrl . '/oauth1/authorize';
+        $url    = static::$baseUrl . '/oauth1/authorize';
         $fields = [
             'oauth_token' => $token,
             'email'       => $identifier,
             'password'    => $secret,
         ];
 
-        $res = self::curlGet($url, $fields);
+        $res = static::curlGet($url, $fields);
 
         parse_str($res, $res);
 
         if (!isset($res['oauth_verifier'])) {
-            throw new Exception('Authorize user failed (3) ' . json_encode(self::getLastCurlInfo()));
+            throw new Exception('Authorize user failed (3) ' . json_encode(static::getLastCurlInfo()));
         }
 
         $oauthVerifier = $res['oauth_verifier'];
@@ -119,20 +119,20 @@ final class Session
         // 4. Get access token
         // ------------------------------------------------------------------
 
-        $url = self::$baseUrl . '/oauth1/access_token';
+        $url = static::$baseUrl . '/oauth1/access_token';
 
-        $fields = self::getBaseOauthFields($consumerKey);
+        $fields = static::getBaseOauthFields($consumerKey);
         $fields['oauth_token']     = $token;
         $fields['oauth_verifier']  = $oauthVerifier;
 
-        $fields['oauth_signature'] = self::sign('POST', $url, $fields, $consumerSecret . '&' . $tokenSecret);
+        $fields['oauth_signature'] = static::sign('POST', $url, $fields, $consumerSecret . '&' . $tokenSecret);
 
-        $res = self::curlPost($url, $fields);
+        $res = static::curlPost($url, $fields);
 
         parse_str($res, $res);
 
         if (!isset($res['oauth_token'], $res['oauth_token_secret'])) {
-            throw new Exception('Get access token failed (4) ' . json_encode(self::getLastCurlInfo()));
+            throw new Exception('Get access token failed (4) ' . json_encode(static::getLastCurlInfo()));
         }
 
         return new self($consumerKey, $consumerSecret, $res['oauth_token'], $res['oauth_token_secret']);
@@ -143,7 +143,7 @@ final class Session
      */
     public static function getLastCurlInfo()
     {
-        return count(self::$curlInfo) ? self::$curlInfo[count(self::$curlInfo) - 1] : null;
+        return count(static::$curlInfo) ? static::$curlInfo[count(static::$curlInfo) - 1] : null;
     }
 
     /**
@@ -163,21 +163,21 @@ final class Session
      */
     public function get($url, $params = [])
     {
-        $fields = self::getBaseOauthFields($this->consumerKey);
+        $fields = static::getBaseOauthFields($this->consumerKey);
         $fields['oauth_token'] = $this->token;
         $fields = array_replace($fields, $params);
 
-        $fields['oauth_signature'] = self::sign(
+        $fields['oauth_signature'] = static::sign(
             'GET',
             $url,
             $fields,
             $this->consumerSecret . '&' . $this->tokenSecret
         );
 
-        return self::curlGet(
+        return static::curlGet(
             $url,
             $params,
-            ['Content-Type: application/json', self::OAuthHeader($fields)]
+            ['Content-Type: application/json', static::OAuthHeader($fields)]
         );
     }
 
@@ -232,13 +232,13 @@ final class Session
         $fields = urlencode(http_build_query($fields));
         $data   = "$set&$url&$fields";
 
-        self::dbg('SIGN', '>', $data);
+        static::dbg('SIGN', '>', $data);
 
         // Get binary and encode afterwards
         $hash = hash_hmac('sha1', $data, $secret, true);
         $hash = base64_encode($hash);
 
-        self::dbg('SIGN', '<', $hash);
+        static::dbg('SIGN', '<', $hash);
 
         return $hash;
     }
@@ -253,7 +253,7 @@ final class Session
      */
     public static function curlGet($url, $fields = null, $headers = null)
     {
-        return self::curlFetch(false, $url, $fields, $headers);
+        return static::curlFetch(false, $url, $fields, $headers);
     }
 
     /**
@@ -266,7 +266,7 @@ final class Session
      */
     public static function curlPost($url, $fields = null, $headers = null)
     {
-        return self::curlFetch(true, $url, $fields, $headers);
+        return static::curlFetch(true, $url, $fields, $headers);
     }
 
     // --------------------------------------------------------------------
@@ -292,7 +292,7 @@ final class Session
 
         $auth = 'Authorization: OAuth ' . implode(',', $auth);
 
-        self::dbg('HEAD', '-', $auth);
+        static::dbg('HEAD', '-', $auth);
 
         return $auth;
     }
@@ -321,7 +321,7 @@ final class Session
             return is_scalar($arg) ? $arg : json_encode($arg);
         }, $args);
 
-        self::$debug[] = sprintf('%-4s %s', $method, implode(' ', $args));
+        static::$debug[] = sprintf('%-4s %s', $method, implode(' ', $args));
     }
 
     /**
@@ -339,14 +339,14 @@ final class Session
 
         $method = $isPOST ? 'POST' : 'GET';
 
-        self::dbg($method, '>', $url);
+        static::dbg($method, '>', $url);
 
         if (!empty($headers)) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            self::dbg($method, '> Headers:', $headers);
+            static::dbg($method, '> Headers:', $headers);
         }
 
-        self::dbg($method, '> Fields:', $fields);
+        static::dbg($method, '> Fields:', $fields);
 
         if (!$isPOST) {
             if ($fields) {
@@ -367,12 +367,12 @@ final class Session
         $res = curl_exec($ch);
         $ts += microtime(true);
 
-        self::$curlInfo[] = curl_getinfo($ch);
+        static::$curlInfo[] = curl_getinfo($ch);
 
         curl_close($ch);
 
-        self::dbg($method, '< curl', round($ts * 1000, 3), 'ms');
-        self::dbg($method, '<', $res);
+        static::dbg($method, '< curl', round($ts * 1000, 3), 'ms');
+        static::dbg($method, '<', $res);
 
         return $res;
     }

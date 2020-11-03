@@ -2,14 +2,14 @@
 /**
  *
  */
-namespace KKo\Discovergy;
+namespace Discovergy;
 
 /**
  *
  */
 use Exception;
 use BadMethodCallException;
-use KKo\OAuth1\Session;
+use OAuth1\Session;
 
 /**
  * API OAuth 1.0
@@ -36,32 +36,32 @@ class API1
      * @param string   $client
      * @param string   $identifier
      * @param string   $secret
-     * @param string   $oauthCacheFile
-     * @param integer  $oauthTTL
-     * @param string   $meterCacheFile
-     * @param integer  $meterTTL
      */
-    public function __construct(
-        $client,
-        $identifier,
-        $secret,
-        $oauthCacheFile = '',
-        $oauthTTL = 0,
-        $meterCacheFile = '',
-        $meterTTL = 0
-    ) {
+    public function __construct($client, $identifier, $secret)
+    {
+        $this->client       = $client;
+        $this->identifier   = $identifier;
+        $this->secret       = $secret;
+    }
+
+    /**
+     * Init connection, authorize
+     *
+     * @return KKo\Discovergy\API1
+     */
+    public function init(): API1
+    {
         // Clear file status cache
         clearstatcache();
 
-        // OAuth data
-        if (is_file($oauthCacheFile) && filemtime($oauthCacheFile) < time() - $oauthTTL) {
-            // Force re-read
-            unlink($oauthCacheFile);
-        }
+        $cache = $this->cache ? $this->cache . '/.oauth.' . md5($this->client . $this->identifier) : false;
 
-        if (is_file($oauthCacheFile)) {
+        // OAuth data, force re-reread if needed
+        $cache && is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
+
+        if (is_file($cache)) {
             // Simple array
-            $secrets = json_decode(file_get_contents($oauthCacheFile));
+            $secrets = json_decode(file_get_contents($cache));
             static::$session = new Session(...$secrets);
         } else {
             $tries = 0;
@@ -70,7 +70,7 @@ class API1
             while (true) {
                 try {
                     $tries++;
-                    static::$session = Session::authorize($client, $identifier, $secret);
+                    static::$session = Session::authorize($this->client, $this->identifier, $this->secret);
                     break; // Success, break while
                 } catch (Exception $e) {
                     if ($tries < 5) {
@@ -83,12 +83,45 @@ class API1
             }
 
             // Save if a cache file name is given
-            if ($oauthCacheFile) {
-                file_put_contents($oauthCacheFile, json_encode(static::$session->getSecrets()));
+            if ($cache) {
+                file_put_contents($cache, json_encode(static::$session->getSecrets()));
             }
         }
 
-        $this->meterCacheFile = $meterCacheFile;
+        return $this;
+    }
+
+    /**
+     * Set cache handling
+     *
+     * @param string|bool $dir
+     * @return KKo\Discovergy\API1
+     */
+    public function setCache($cache = true): API1
+    {
+        if ($cache === true) {
+            $this->cache = sys_get_temp_dir();
+        } elseif ($cache === false || $cache == '') {
+            $this->cache = false;
+        } else {
+            $this->cache = $cache;
+            is_dir($this->cache) || mkdir($this->cache, 0755, true);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set cache TTL
+     *
+     * @param int $ttl
+     * @return KKo\Discovergy\API1
+     */
+    public function setTTL($ttl): API1
+    {
+        $this->ttl = $ttl;
+
+        return $this;
     }
 
     /**
@@ -100,15 +133,13 @@ class API1
     {
         // Lazy load
         if (empty($this->meters)) {
-            if ($this->meterCacheFile) {
-                if (is_file($this->meterCacheFile) && filemtime($this->meterCacheFile) < time() - $meterTTL) {
-                    // Force re-read
-                    unlink($this->meterCacheFile);
-                }
-            }
+            $cache = $this->cache ? $this->cache . '/.meters.' . md5($this->client . $this->identifier) : false;
 
-            if (is_file($this->meterCacheFile)) {
-                $this->meters = json_decode(file_get_contents($this->meterCacheFile));
+            // Force re-reread if needed
+            $cache && is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
+
+            if (is_file($cache)) {
+                $this->meters = json_decode(file_get_contents($cache));
             } else {
                 $loop = 0;
 
@@ -117,7 +148,7 @@ class API1
 
                     if (!empty($meters)) {
                         // Save if a cache file name is given
-                        $this->meterCacheFile && file_put_contents($this->meterCacheFile, $meters);
+                        $cache && file_put_contents($cache, $meters);
 
                         $meters = json_decode($meters);
 
@@ -221,7 +252,22 @@ class API1
     /**
      * @var string
      */
-    private $meterCacheFile = '';
+    private $client;
+
+    /**
+     * @var string
+     */
+    private $identifier;
+
+    /**
+     * @var string
+     */
+    private $secret;
+
+    /**
+     * @var string
+     */
+    private $cache = false;
 
     /**
      * @var array
