@@ -20,8 +20,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Discovergy": "src/Discovergy/",
-            "OAuth1": "src/OAuth1/"
+            "Discovergy\\": "src/Discovergy/",
+            "OAuth1\\": "src/OAuth1/"
         }
     }
 }
