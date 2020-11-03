@@ -46,7 +46,8 @@ foreach ($args as $arg) {
 }
 
 try {
-    $api = new KKo\Discovergy\API1('kko-discovergy-oauth1', $identifier, $secret);
+    $api = new Discovergy\API1('kko-discovergy-oauth1', $identifier, $secret);
+    $api->init();
     fwrite($fh, "::: got a valid session\n");
 } catch (Exception $e) {
     fwrite($fh, "::: ERROR: " . $e->getMessage());

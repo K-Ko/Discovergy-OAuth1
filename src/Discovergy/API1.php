@@ -101,11 +101,14 @@ class API1
     {
         if ($cache === true) {
             $this->cache = sys_get_temp_dir();
+            $this->ttl   = 86400;
         } elseif ($cache === false || $cache == '') {
             $this->cache = false;
+            $this->ttl   = 0;
         } else {
             $this->cache = $cache;
             is_dir($this->cache) || mkdir($this->cache, 0755, true);
+            $this->ttl = 86400;
         }
 
         return $this;

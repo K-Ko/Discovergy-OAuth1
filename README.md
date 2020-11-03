@@ -6,20 +6,27 @@
 
 ```PHP
 use Exception;
-use KKo\Discovergy\API1 as DiscovergyAPI;
+use Discovergy\API1 as DiscovergyAPI;
 
 try {
     $api = new DiscovergyAPI(
         // Required parameters
-        $client,                               // Your own application identifier
-        $identifier,                           // Login for the Discovergy portal, mostly your email address
-        $secret,                               // Password for the Discovergy portal
-        // Optional parameters
-        sys_get_temp_dir() . '/oauth.json',    // Cache OAuth data
-        3600,                                  // TTL for OAuth data in seconds; here 1 hour
-        sys_get_temp_dir() . '/meters.json',   // Cache meters data
-        3600                                   // TTL for meters data in seconds; here 1 hour
+        $client,     // Your own application identifier
+        $identifier, // Login for the Discovergy portal, mostly your email address
+        $secret
     );
+
+    // Use cache, system temp dir.
+    $api->setCache(true);
+    // Use your own cache dir.
+    $api->setCache('/path/to/your/cache/dir');
+    // If cache is used, default TTL is 1 day
+
+    // Cache for 1 hour
+    $api->setTTL(3600);
+
+    // Authorize
+    $api->init();
 } catch (Exception $e) {
     die($e->getMessage());
 }
