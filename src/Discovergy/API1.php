@@ -54,7 +54,7 @@ class API1
         // Clear file status cache
         clearstatcache();
 
-        $cache = $this->cache ? $this->cache . '/.oauth.' . md5($this->client . $this->identifier) : false;
+        $cache = $this->cache ? $this->cache . '/.oauth.' . md5($this->client . $this->identifier) . '.json' : false;
 
         // OAuth data, force re-reread if needed
         $cache && is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
@@ -136,7 +136,7 @@ class API1
     {
         // Lazy load
         if (empty($this->meters)) {
-            $cache = $this->cache ? $this->cache . '/.meters.' . md5($this->client . $this->identifier) : false;
+            $cache = $this->cache ? $this->cache . '/.meters.' . md5($this->client . $this->identifier) . '.json' : false;
 
             // Force re-reread if needed
             $cache && is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
