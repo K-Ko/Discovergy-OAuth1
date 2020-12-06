@@ -14,7 +14,7 @@ use OAuth1\Session;
 /**
  * API OAuth 1.0
  */
-class API1
+final class API1
 {
     /**
      * Discovergy API base URL
@@ -39,22 +39,24 @@ class API1
      */
     public function __construct($client, $identifier, $secret)
     {
-        $this->client       = $client;
-        $this->identifier   = $identifier;
-        $this->secret       = $secret;
+        $this->client     = $client;
+        $this->identifier = $identifier;
+        $this->secret     = $secret;
     }
 
     /**
      * Init connection, authorize
      *
-     * @return KKo\Discovergy\API1
+     * @return Discovergy\API1
      */
     public function init(): API1
     {
         // Clear file status cache
         clearstatcache();
 
-        $cache = $this->cache ? $this->cache . '/.oauth.' . md5($this->client . $this->identifier) . '.json' : false;
+        $cache = $this->cache
+               ? $this->cache . '/.oauth.' . md5($this->client . $this->identifier) . '.json'
+               : false;
 
         // OAuth data, force re-reread if needed
         $cache && is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
@@ -62,7 +64,7 @@ class API1
         if (is_file($cache)) {
             // Simple array
             $secrets = json_decode(file_get_contents($cache));
-            static::$session = new Session(...$secrets);
+            static::$session = new Session(... $secrets);
         } else {
             $tries = 0;
 
@@ -83,9 +85,7 @@ class API1
             }
 
             // Save if a cache file name is given
-            if ($cache) {
-                file_put_contents($cache, json_encode(static::$session->getSecrets()));
-            }
+            $cache && file_put_contents($cache, json_encode(static::$session->getSecrets()));
         }
 
         return $this;
@@ -95,7 +95,7 @@ class API1
      * Set cache handling
      *
      * @param string|bool $dir
-     * @return KKo\Discovergy\API1
+     * @return Discovergy\API1
      */
     public function setCache($cache = true): API1
     {
@@ -118,7 +118,7 @@ class API1
      * Set cache TTL
      *
      * @param int $ttl
-     * @return KKo\Discovergy\API1
+     * @return Discovergy\API1
      */
     public function setTTL($ttl): API1
     {
@@ -135,35 +135,35 @@ class API1
     public function getMeters()
     {
         // Lazy load
-        if (empty($this->meters)) {
-            $cache = $this->cache ? $this->cache . '/.meters.' . md5($this->client . $this->identifier) . '.json' : false;
+        if (!$this->meters) {
+            $cache = $this->cache
+                   ? $this->cache . '/.meters.' . md5($this->client . $this->identifier) . '.json'
+                   : false;
 
             // Force re-reread if needed
             $cache && is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
 
             if (is_file($cache)) {
-                $this->meters = json_decode(file_get_contents($cache));
+                $meters = json_decode(file_get_contents($cache));
             } else {
                 $loop = 0;
 
                 do {
-                    $meters = static::$session->get($this->baseUrl . '/meters');
-
-                    if (!empty($meters)) {
+                    if (!empty($meters = $this->get('meters'))) {
                         // Save if a cache file name is given
-                        $cache && file_put_contents($cache, $meters);
-
-                        $meters = json_decode($meters);
-
-                        if (json_last_error() == JSON_ERROR_NONE) {
-                            $this->meters = $meters;
-                            break;
-                        }
+                        $cache && file_put_contents($cache, json_encode($meters));
+                        break;
                     }
 
                     // Sleep a bit to give API chance to answer
                     sleep(++$loop);
                 } while (!$meters || $loop < 5);
+            }
+
+            $this->meters = new Meters();
+
+            foreach ($meters as $meter) {
+                $this->meters[] = new Meter($this, $meter);
             }
         }
 
@@ -174,66 +174,14 @@ class API1
      * Get meter details
      *
      * @param  string $meterId
-     * @return \stdClass
+     * @return stdClass
      */
     public function getMeter($meterId)
     {
         // Lazy load meters on request
         $meters = $this->getMeters();
 
-        if (!$meters || !is_array($meters)) {
-            return null;
-        }
-
-        foreach ($meters as &$meter) {
-            // Check posible fields for a valid meter Id
-            if ($meter->fullSerialNumber === $meterId ||
-                $meter->serialNumber === $meterId ||
-                $meter->meterId === $meterId) {
-                return $meter;
-            }
-        }
-    }
-
-    /**
-     * Call GET endpoints
-     *
-     * Metadata
-     * - /devices
-     * - /field_names
-     * Measurements
-     * - /readings
-     * - /last_reading
-     * - /statistics
-     * - /load_profile
-     * - /raw_load_profile
-     * Disaggregation
-     * - /disaggregation
-     * - /activities
-     * Website Access Code
-     * - /website_access_code
-     * Virtual meters
-     * - /virtual_meters
-     *
-     * @throws BadMethodCallException
-     * @param  string $name Method called
-     * @param  array  $arguments Method arguments
-     * @return mixed
-     */
-    public function __call($name, $arguments)
-    {
-        if (preg_match('~^get(.*)$~', $name, $matches)) {
-            // Endpoint name from CamelCase to snake_case
-            $endpoint = strtolower(trim(preg_replace('~[A-Z]~', '_$0', $matches[1]), '_'));
-
-            if (!isset($arguments[0]) || !is_array($arguments[0])) {
-                throw new BadMethodCallException('Required: ' . __CLASS__ . '::' . $name . '(array $params)');
-            }
-
-            return $this->get($endpoint, $arguments[0]);
-        }
-
-        throw new BadMethodCallException('Invalid method call: ' . __CLASS__ . '::' . $name . '()');
+        return $meters[$meterId];
     }
 
     /**
@@ -273,7 +221,7 @@ class API1
     private $cache = false;
 
     /**
-     * @var array
+     * @var Discovergy\Meters
      */
-    private $meters = [];
+    private $meters;
 }
