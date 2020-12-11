@@ -30,11 +30,6 @@ class Reading
      */
     public function __get($name)
     {
-        // e.g. existing power, energy, energyOut
-        if (isset($this->data[$name])) {
-            return $this->data[$name];
-        }
-
         if ($name == 'timestamp') {
             return floor($this->data['time'] / 1000);
         }
@@ -48,6 +43,24 @@ class Reading
             $ts = $this->data['time'] / 1000;
             $ms = sprintf('%03d', round(($ts - floor($ts)) * 1000));
             return date('Y-m-d H:i:s.', $ts) . $ms;
+        }
+
+        // power
+        if ($name == 'power_w' && isset($this->data['power'])) {
+            return $this->data['power'] / 1e3;
+        }
+
+        if ($name == 'power_kw' && isset($this->data['enpowerergy'])) {
+            return $this->data['power'] / 1e6;
+        }
+
+        // RLM power
+        if ($name == 'power_w' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
+            return $data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'} / 1e3;
+        }
+
+        if ($name == 'power_kw' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
+            return ($data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'}) / 1e6;
         }
 
         // energy
@@ -94,17 +107,9 @@ class Reading
             return $this->data['2.8.0'] / 1e6;
         }
 
-        // RLM power
-        if ($name == 'power' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
-            return $data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'};
-        }
-
-        if ($name == 'power_w' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
-            return ($data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'}) / 1e3;
-        }
-
-        if ($name == 'power_wh' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
-            return ($data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'}) / 1e6;
+        // existing keys
+        if (isset($this->data[$name])) {
+            return $this->data[$name];
         }
     }
 
