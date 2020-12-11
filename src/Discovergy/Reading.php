@@ -74,11 +74,11 @@ class Reading
         }
 
         if ($name == 'energy_wh' && isset($this->data['1.8.0'])) {
-            return $this->data['1.8.0'] / 1e7;
+            return $this->data['1.8.0'] / 1e3;
         }
 
         if ($name == 'energy_kwh' && isset($this->data['1.8.0'])) {
-            return $this->data['1.8.0'] / 1e10;
+            return $this->data['1.8.0'] / 1e6;
         }
 
         // RLM energyOut
@@ -87,16 +87,24 @@ class Reading
         }
 
         if ($name == 'energyOut_wh' && isset($this->data['2.8.0'])) {
-            return $this->data['2.8.0'] / 1e7;
+            return $this->data['2.8.0'] / 1e3;
         }
 
         if ($name == 'energyOut_kwh' && isset($this->data['2.8.0'])) {
-            return $this->data['2.8.0'] / 1e10;
+            return $this->data['2.8.0'] / 1e6;
         }
 
         // RLM power
         if ($name == 'power' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
             return $data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'};
+        }
+
+        if ($name == 'power_w' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
+            return ($data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'}) / 1e3;
+        }
+
+        if ($name == 'power_wh' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
+            return ($data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'}) / 1e6;
         }
     }
 
