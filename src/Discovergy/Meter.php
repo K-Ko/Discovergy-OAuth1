@@ -7,7 +7,12 @@ namespace Discovergy;
 /**
  *
  */
-class Meter
+use JsonSerializable;
+
+/**
+ *
+ */
+class Meter implements JsonSerializable
 {
     /**
      * Class constructor
@@ -32,7 +37,10 @@ class Meter
         if ($name == 'address') {
             $l = $this->data['location'];
 
-            return sprintf('%s %s, %s %s', $l['street'], $l['streetNumber'], $l['zip'], $l['city']);
+            // Remove city district
+            $l['city'] = preg_replace('~ *([(]|OT) +.*$~', '', $l['city']);
+
+            return sprintf('%s %s, %s-%s %s', $l['street'], $l['streetNumber'], $l['country'], $l['zip'], $l['city']);
         }
 
         return isset($this->data[$name]) ? $this->data[$name] : null;
@@ -79,6 +87,20 @@ class Meter
         }
 
         throw new BadMethodCallException('Invalid method call: ' . __CLASS__ . ':' . $name . '()');
+    }
+
+    /**
+     * @return mixed
+     */
+    public function jsonSerialize()
+    {
+        $data = $this->data;
+
+        $data['address'] = $this->address;
+
+        ksort($data);
+
+        return $data;
     }
 
     // ----------------------------------------------------------------------

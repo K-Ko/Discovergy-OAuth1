@@ -7,7 +7,12 @@ namespace Discovergy;
 /**
  *
  */
-class Reading
+use JsonSerializable;
+
+/**
+ *
+ */
+class Reading implements JsonSerializable
 {
     /**
      * Class constructor
@@ -50,7 +55,7 @@ class Reading
             return $this->data['power'] / 1e3;
         }
 
-        if ($name == 'power_kw' && isset($this->data['enpowerergy'])) {
+        if ($name == 'power_kw' && isset($this->data['power'])) {
             return $this->data['power'] / 1e6;
         }
 
@@ -111,6 +116,27 @@ class Reading
         if (isset($this->data[$name])) {
             return $this->data[$name];
         }
+    }
+
+    /**
+     * @return mixed
+     */
+    public function jsonSerialize()
+    {
+        $data = $this->data;
+
+        $data['timestamp']      = $this->timestamp;
+        $data['datetime']       = $this->datetime;
+        $data['energy_wh']      = $this->energy_wh;
+        $data['energy_kwh']     = $this->energy_kwh;
+        $data['energyOut_wh']   = $this->energyOut_wh;
+        $data['energyOut_kwh']  = $this->energyOut_kwh;
+        $data['power_w']        = $this->power_w;
+        $data['power_kw']       = $this->power_kw;
+
+        ksort($data);
+
+        return $data;
     }
 
     // ----------------------------------------------------------------------

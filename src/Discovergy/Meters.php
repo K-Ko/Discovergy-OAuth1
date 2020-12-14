@@ -9,11 +9,12 @@ namespace Discovergy;
  */
 use ArrayAccess;
 use Iterator;
+use JsonSerializable;
 
 /**
  *
  */
-class Meters implements ArrayAccess, Iterator
+class Meters implements ArrayAccess, Iterator, JsonSerializable
 {
     /**
      * ArrayAccess
@@ -85,6 +86,14 @@ class Meters implements ArrayAccess, Iterator
     public function valid()
     {
         return isset($this->meters[$this->position]);
+    }
+
+    /**
+     * @return mixed
+     */
+    public function jsonSerialize()
+    {
+        return $this->meters;
     }
 
     // ----------------------------------------------------------------------
