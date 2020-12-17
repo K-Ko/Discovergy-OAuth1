@@ -43,6 +43,20 @@ class Meter implements JsonSerializable
             return sprintf('%s %s, %s-%s %s', $l['street'], $l['streetNumber'], $l['country'], $l['zip'], $l['city']);
         }
 
+        if ($name == 'firstMeasurementDatetime') {
+            // Timestamp with ms
+            $ts = $this->data['firstMeasurementTime'] / 1000;
+            $ms = sprintf('%03d', round(($ts - floor($ts)) * 1000));
+            return date('Y-m-d H:i:s.', $ts) . $ms;
+        }
+
+        if ($name == 'lastMeasurementDatetime') {
+            // Timestamp with ms
+            $ts = $this->data['lastMeasurementTime'] / 1000;
+            $ms = sprintf('%03d', round(($ts - floor($ts)) * 1000));
+            return date('Y-m-d H:i:s.', $ts) . $ms;
+        }
+
         return isset($this->data[$name]) ? $this->data[$name] : null;
     }
 
@@ -97,6 +111,8 @@ class Meter implements JsonSerializable
         $data = $this->data;
 
         $data['address'] = $this->address;
+        $data['firstMeasurementDatetime'] = $this->firstMeasurementDatetime;
+        $data['lastMeasurementDatetime']  = $this->lastMeasurementDatetime;
 
         ksort($data);
 

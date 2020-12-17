@@ -28,6 +28,23 @@ class Reading implements JsonSerializable
     }
 
     /**
+     * Make Readings instances from readings objects
+     *
+     * @param array $name
+     * @return array
+     */
+    public static function toReadings(array $readings): array
+    {
+        $result = [];
+
+        foreach ($readings as $reading) {
+            $result[] = new static($reading);
+        }
+
+        return $result;
+    }
+
+    /**
      * Magic getter
      *
      * @param string $name
