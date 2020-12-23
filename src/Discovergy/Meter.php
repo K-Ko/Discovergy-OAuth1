@@ -43,6 +43,10 @@ class Meter implements JsonSerializable
             return sprintf('%s %s, %s-%s %s', $l['street'], $l['streetNumber'], $l['country'], $l['zip'], $l['city']);
         }
 
+        if ($name == 'fullSerialNumberShort') {
+            return substr($this->data['fullSerialNumber'], 0, 4) . substr($this->data['fullSerialNumber'], 6);
+        }
+
         if ($name == 'firstMeasurementDatetime') {
             // Timestamp with ms
             $ts = $this->data['firstMeasurementTime'] / 1000;
@@ -110,9 +114,10 @@ class Meter implements JsonSerializable
     {
         $data = $this->data;
 
-        $data['address'] = $this->address;
-        $data['firstMeasurementDatetime'] = $this->firstMeasurementDatetime;
-        $data['lastMeasurementDatetime']  = $this->lastMeasurementDatetime;
+        $data['fullSerialNumberShort']      = $this->fullSerialNumberShort;
+        $data['address']                    = $this->address;
+        $data['firstMeasurementDatetime']   = $this->firstMeasurementDatetime;
+        $data['lastMeasurementDatetime']    = $this->lastMeasurementDatetime;
 
         ksort($data);
 
