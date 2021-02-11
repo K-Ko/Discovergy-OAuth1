@@ -70,16 +70,16 @@ Naming convention is: endpoint `/snake_case` must be called as `getCamelCase()`.
 
 All methods expect the same required (and optional) paramters as described in the [API docs](https://api.discovergy.com/docs/).
 
-For example the endpoint `/last_reading` expect the required `meterId`.
-
-So the \$api call have to be
+So the call have to be
 
 ```PHP
-$last_reading = $api->getLastReading([ 'meterId' => $meterId ]);
+$last_reading = $api->getMeter('YOUR-METER-ID')->getLastReading();
 ```
 
 With optional paramters a call would be
 
+For example the endpoint `/readings` expect a `resolution`.
+
 ```PHP
-$readings = $api->getReadings([ 'meterId' => $meterId, 'resolution' => $resolution, 'from' => $from ]);
+$readings = $api->getMeter('YOUR-METER-ID')->getReadings([ 'resolution' => $resolution, 'from' => $from ]);
 ```

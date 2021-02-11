@@ -51,6 +51,7 @@ class Meters implements ArrayAccess, Iterator, JsonSerializable
     {
         foreach ($this->meters as $meter) {
             if ($meter->fullSerialNumber === $offset ||
+                substr($meter->fullSerialNumber, -8) === substr($offset, -8) ||
                 $meter->serialNumber === $offset ||
                 $meter->meterId === $offset) {
                 return $meter;

@@ -7,6 +7,7 @@ namespace Discovergy;
 /**
  *
  */
+use BadMethodCallException;
 use JsonSerializable;
 
 /**
@@ -22,12 +23,13 @@ class Meter implements JsonSerializable
      */
     public function __construct(API1 $api, object $data)
     {
-        $this->api  = $api;
+        $this->api = $api;
+        // Convert data to an array
         $this->data = json_decode(json_encode($data), true);
     }
 
     /**
-     * Magic getter
+     * Magic getter for calculated fields
      *
      * @param string $name
      * @return mixed
@@ -44,6 +46,7 @@ class Meter implements JsonSerializable
         }
 
         if ($name == 'fullSerialNumberShort') {
+            // Remove character 5 & 6, sometimes there is a difference in EMH meters in position 6 (0 or 1)
             return substr($this->data['fullSerialNumber'], 0, 4) . substr($this->data['fullSerialNumber'], 6);
         }
 
@@ -61,6 +64,7 @@ class Meter implements JsonSerializable
             return date('Y-m-d H:i:s.', $ts) . $ms;
         }
 
+        // Existing data key
         return isset($this->data[$name]) ? $this->data[$name] : null;
     }
 
@@ -114,8 +118,8 @@ class Meter implements JsonSerializable
     {
         $data = $this->data;
 
-        $data['fullSerialNumberShort']      = $this->fullSerialNumberShort;
         $data['address']                    = $this->address;
+        $data['fullSerialNumberShort']      = $this->fullSerialNumberShort;
         $data['firstMeasurementDatetime']   = $this->firstMeasurementDatetime;
         $data['lastMeasurementDatetime']    = $this->lastMeasurementDatetime;
 

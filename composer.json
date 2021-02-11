@@ -1,7 +1,7 @@
 {
     "name": "k-ko/discovergy-oauth1",
     "type": "library",
-    "description": "Discovergy API client",
+    "description": "Discovergy OAUTH 1.0 API client",
     "keywords": [
         "Discovergy",
         "API",
@@ -20,8 +20,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Discovergy\\": "src/Discovergy/",
-            "OAuth1\\": "src/OAuth1/"
+            "": "src/"
         }
     }
 }

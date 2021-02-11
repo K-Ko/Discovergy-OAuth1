@@ -17,12 +17,12 @@ class Reading implements JsonSerializable
     /**
      * Class constructor
      *
-     * @param object|null $reading
+     * @param object $reading Reading data from Discovergy endpoint /readings
      */
     public function __construct($reading)
     {
         if (is_object($reading)) {
-            // Put time into data for consistent __get() handling
+            // Put time into data for consistent __get() handling and convert values to array
             $this->data = [ 'time' => $reading->time ] + json_decode(json_encode($reading->values), true);
         }
     }
@@ -30,7 +30,7 @@ class Reading implements JsonSerializable
     /**
      * Make Readings instances from readings objects
      *
-     * @param array $name
+     * @param array $readings
      * @return array
      */
     public static function toReadings(array $readings): array
@@ -77,6 +77,10 @@ class Reading implements JsonSerializable
         }
 
         // RLM power
+        if ($name == 'power' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
+            return $data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'};
+        }
+
         if ($name == 'power_w' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
             return $data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'} / 1e3;
         }
@@ -144,12 +148,15 @@ class Reading implements JsonSerializable
 
         $data['timestamp']      = $this->timestamp;
         $data['datetime']       = $this->datetime;
-        $data['energy_wh']      = $this->energy_wh;
-        $data['energy_kwh']     = $this->energy_kwh;
-        $data['energyOut_wh']   = $this->energyOut_wh;
-        $data['energyOut_kwh']  = $this->energyOut_kwh;
+        $data['power']          = $this->power;         // Re-read to catch RLMs
         $data['power_w']        = $this->power_w;
         $data['power_kw']       = $this->power_kw;
+        $data['energy']         = $this->energy;        // Re-read to catch RLMs
+        $data['energy_wh']      = $this->energy_wh;
+        $data['energy_kwh']     = $this->energy_kwh;
+        $data['energyOut']      = $this->energyOut;     // Re-read to catch RLMs
+        $data['energyOut_wh']   = $this->energyOut_wh;
+        $data['energyOut_kwh']  = $this->energyOut_kwh;
 
         ksort($data);
 
