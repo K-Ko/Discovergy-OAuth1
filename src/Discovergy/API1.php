@@ -263,9 +263,9 @@ final class API1
      * Get meter details
      *
      * @param  string $meterId
-     * @return stdClass
+     * @return \Discovergy\Meter|null
      */
-    public function getMeter($meterId): Meter
+    public function getMeter($meterId)
     {
         // Lazy load meters on request
         $meters = $this->getMeters();
