@@ -1,17 +1,9 @@
 <?php
-/**
- *
- */
+
 namespace Discovergy;
 
-/**
- *
- */
 use JsonSerializable;
 
-/**
- *
- */
 class Reading implements JsonSerializable
 {
     /**
@@ -23,7 +15,7 @@ class Reading implements JsonSerializable
     {
         if (is_object($reading)) {
             // Put time into data for consistent __get() handling and convert values to array
-            $this->data = [ 'time' => $reading->time ] + json_decode(json_encode($reading->values), true);
+            $this->data = ['time' => $reading->time] + json_decode(json_encode($reading->values), true);
         }
     }
 
@@ -77,16 +69,16 @@ class Reading implements JsonSerializable
         }
 
         // RLM power
-        if ($name == 'power' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
-            return $data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'};
+        if ($name == 'power' && isset($this->data['21.25'], $this->data['41.25'], $this->data['61.25'])) {
+            return $this->data['21.25'] + $this->data['41.25'] + $this->data['61.25'];
         }
 
-        if ($name == 'power_w' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
-            return $data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'} / 1e3;
+        if ($name == 'power_w' && isset($this->data['21.25'], $this->data['41.25'], $this->data['61.25'])) {
+            return $this->data['21.25'] + $this->data['41.25'] + $this->data['61.25'] / 1e3;
         }
 
-        if ($name == 'power_kw' && isset($data->{'21.25'}, $data->{'41.25'}, $data->{'61.25'})) {
-            return ($data->{'21.25'} + $data->{'41.25'} + $data->{'61.25'}) / 1e6;
+        if ($name == 'power_kw' && isset($this->data['21.25'], $this->data['41.25'], $this->data['61.25'])) {
+            return ($this->data['21.25'] + $this->data['41.25'] + $this->data['61.25']) / 1e6;
         }
 
         // energy

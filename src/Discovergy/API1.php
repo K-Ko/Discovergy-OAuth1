@@ -1,14 +1,8 @@
 <?php
-/**
- *
- */
+
 namespace Discovergy;
 
-/**
- *
- */
 use Exception;
-use BadMethodCallException;
 use OAuth1\Session;
 
 /**
@@ -87,7 +81,7 @@ final class API1
 
         if (is_file($cache)) {
             // Simple array
-            static::$session = new Session(... json_decode(file_get_contents($cache)));
+            static::$session = new Session(...json_decode(file_get_contents($cache)));
             static::$debug && header('X-OAUTH-AUTHORIZATION-CACHE: true');
 
             return $this;
@@ -270,7 +264,7 @@ final class API1
         // Lazy load meters on request
         $meters = $this->getMeters();
 
-        return $meters[$meterId];
+        return $meters[$meterId] ?? null;
     }
 
     /**

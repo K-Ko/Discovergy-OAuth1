@@ -1,25 +1,17 @@
 <?php
-/**
- *
- */
+
 namespace Discovergy;
 
-/**
- *
- */
 use ArrayAccess;
 use Iterator;
 use JsonSerializable;
 
-/**
- *
- */
 class Meters implements ArrayAccess, Iterator, JsonSerializable
 {
     /**
      * ArrayAccess
      */
-    public function offsetSet($offset, $value)
+    public function offsetSet($offset, $value): void
     {
         if (is_null($offset)) {
             $this->meters[] = $value;
@@ -28,13 +20,16 @@ class Meters implements ArrayAccess, Iterator, JsonSerializable
         }
     }
 
-    public function offsetExists($offset)
+    public function offsetExists($offset): bool
     {
         foreach ($this->meters as $meter) {
-            if ($meter->fullSerialNumber === $offset ||
+            // phpcs:ignore
+            if (
+                $meter->fullSerialNumber === $offset ||
                 substr($meter->fullSerialNumber, -8) === substr($offset, -8) ||
                 $meter->serialNumber === $offset ||
-                $meter->meterId === $offset) {
+                $meter->meterId === $offset
+            ) {
                 return true;
             }
         }
@@ -42,7 +37,7 @@ class Meters implements ArrayAccess, Iterator, JsonSerializable
         return false;
     }
 
-    public function offsetUnset($offset)
+    public function offsetUnset($offset): void
     {
         unset($this->meters[$offset]);
     }
@@ -50,10 +45,13 @@ class Meters implements ArrayAccess, Iterator, JsonSerializable
     public function offsetGet($offset)
     {
         foreach ($this->meters as $meter) {
-            if ($meter->fullSerialNumber === $offset ||
+            // phpcs:ignore
+            if (
+                $meter->fullSerialNumber === $offset ||
                 substr($meter->fullSerialNumber, -8) === substr($offset, -8) ||
                 $meter->serialNumber === $offset ||
-                $meter->meterId === $offset) {
+                $meter->meterId === $offset
+            ) {
                 return $meter;
             }
         }
@@ -64,7 +62,7 @@ class Meters implements ArrayAccess, Iterator, JsonSerializable
     /**
      * Iterator
      */
-    public function rewind()
+    public function rewind(): void
     {
         $this->position = 0;
     }
@@ -79,12 +77,12 @@ class Meters implements ArrayAccess, Iterator, JsonSerializable
         return $this->position;
     }
 
-    public function next()
+    public function next(): void
     {
         $this->position++;
     }
 
-    public function valid()
+    public function valid(): bool
     {
         return isset($this->meters[$this->position]);
     }

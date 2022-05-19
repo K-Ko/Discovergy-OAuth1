@@ -1,12 +1,7 @@
 <?php
-/**
- *
- */
+
 namespace OAuth1;
 
-/**
- *
- */
 use Exception;
 
 /**
@@ -63,7 +58,7 @@ final class Session
         // ------------------------------------------------------------------
 
         $url    = static::$baseUrl . '/oauth1/consumer_token';
-        $fields = [ 'client' => $client ];
+        $fields = ['client' => $client];
         $res    = json_decode(static::curlPost($url, $fields), true);
 
         if (!isset($res['key'], $res['secret'])) {
@@ -151,7 +146,7 @@ final class Session
      */
     public function getSecrets()
     {
-        return [ $this->consumerKey, $this->consumerSecret, $this->token, $this->tokenSecret ];
+        return [$this->consumerKey, $this->consumerSecret, $this->token, $this->tokenSecret];
     }
 
     /**

@@ -1,18 +1,10 @@
 <?php
-/**
- *
- */
+
 namespace Discovergy;
 
-/**
- *
- */
 use BadMethodCallException;
 use JsonSerializable;
 
-/**
- *
- */
 class Meter implements JsonSerializable
 {
     /**
@@ -99,7 +91,7 @@ class Meter implements JsonSerializable
             // Endpoint name from CamelCase to snake_case
             $endpoint  = strtolower(trim(preg_replace('~[A-Z]~', '_$0', $matches[1]), '_'));
             // meterId is required
-            $params = [ 'meterId' => $this->data['meterId'] ];
+            $params = ['meterId' => $this->data['meterId']];
 
             if (isset($arguments[0]) && is_array($arguments[0])) {
                 $params = array_merge($params, $arguments[0]);
