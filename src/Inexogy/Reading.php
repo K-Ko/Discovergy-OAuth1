@@ -1,6 +1,6 @@
 <?php
 
-namespace Discovergy;
+namespace Inexogy;
 
 use JsonSerializable;
 
@@ -9,7 +9,7 @@ class Reading implements JsonSerializable
     /**
      * Class constructor
      *
-     * @param object $reading Reading data from Discovergy endpoint /readings
+     * @param object $reading Reading data from Inexogy endpoint /readings
      */
     public function __construct($reading)
     {

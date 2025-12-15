@@ -10,11 +10,11 @@ use Exception;
 final class Session
 {
     /**
-     * Discovergy API base URL
+     * Inexogy API base URL
      *
      * @var string
      */
-    public static $baseUrl = 'https://api.discovergy.com/public/v1';
+    public static $baseUrl;
 
     /**
      * @var array Debug messages
@@ -296,9 +296,24 @@ final class Session
     // PRIVATE
     // --------------------------------------------------------------------
 
+    /**
+     * @var string
+     */
     private $consumerKey;
+
+    /**
+     * @var string
+     */
     private $consumerSecret;
+
+    /**
+     * @var string
+     */
     private $token;
+
+    /**
+     * @var string
+     */
     private $tokenSecret;
 
     /**
@@ -307,11 +322,8 @@ final class Session
      * @param  string  $method
      * @return void
      */
-    private static function dbg($method)
+    private static function dbg($method, ...$args)
     {
-        $args   = func_get_args();
-        $method = array_shift($args);
-
         $args = array_map(function ($arg) {
             return is_scalar($arg) ? $arg : json_encode($arg);
         }, $args);
@@ -356,18 +368,22 @@ final class Session
         }
 
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
         $ts  = -microtime(true);
         $res = curl_exec($ch);
         $ts += microtime(true);
 
-        static::$curlInfo[] = curl_getinfo($ch);
+        $info = curl_getinfo($ch);
 
         curl_close($ch);
 
+        static::$curlInfo[] = $info;
+
         static::dbg($method, '< curl', round($ts * 1000, 3), 'ms');
         static::dbg($method, '<', $res);
+        static::dbg($method, '<', $info);
 
         return $res;
     }

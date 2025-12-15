@@ -12,14 +12,11 @@ date_default_timezone_set('Europe/Berlin');
  * Load classes
  */
 require __DIR__ . '/../src/OAuth1/Session.php';
-require __DIR__ . '/../src/Discovergy/API1.php';
+require __DIR__ . '/../src/Inexogy/API1.php';
 
 if ($argc < 4) {
-    die(
-        PHP_EOL .
-        'Missing paramters, at least' . PHP_EOL . PHP_EOL .
-        '# ' . $argv[0] . ' <identifier> <secret> <endpoint>' . PHP_EOL
-    );
+    die(PHP_EOL . 'Missing paramters, at least' . PHP_EOL . PHP_EOL .
+        '# ' . $argv[0] . ' <identifier> <secret> <endpoint>' . PHP_EOL);
 }
 
 $identifier = $argv[1];
@@ -46,7 +43,8 @@ foreach ($args as $arg) {
 }
 
 try {
-    $api = new Discovergy\API1('kko-discovergy-oauth1', $identifier, $secret);
+    $api = new Inexogy\API1('kko-inexogy-oauth1', $identifier, $secret);
+    $api->setCache(__DIR__ . '/../.cache');
     $api->init();
     fwrite($fh, "::: got a valid session\n");
 } catch (Exception $e) {
@@ -59,7 +57,8 @@ fwrite($fh, "::: Fetch endpoint /$endpoint ...\n");
 $res = $api->get($endpoint, $params);
 
 if ($res) {
-    echo json_encode($res);
+    echo "\nDEBUG:\n\n", json_encode($api::$session::$debug, JSON_PRETTY_PRINT);
+    echo "\n\nRESULT:\n\n", json_encode($res, JSON_PRETTY_PRINT);
 } else {
     fwrite($fh, "::: ERROR\n");
     fwrite($fh, implode(PHP_EOL, $api::$session::$debug));

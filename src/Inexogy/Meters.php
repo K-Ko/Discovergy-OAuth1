@@ -1,6 +1,6 @@
 <?php
 
-namespace Discovergy;
+namespace Inexogy;
 
 use ArrayAccess;
 use Iterator;

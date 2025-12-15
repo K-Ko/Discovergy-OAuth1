@@ -2,16 +2,16 @@
 
 ## `api-get.php`
 
-Refer to [Discovergy API](https://api.discovergy.com/docs/) for valid GET endpoints and their parameters.
+Refer to [Inexogy API](https://api.inexogy.com/docs/) for valid GET endpoints and their parameters.
 
 The general call syntax ist the following:
 
     php -f api-get.php <identifier> <secret> <endpoint> [<param1=value1> [<param2=value2> ...]]
 
--   identifier - Login for the Discovergy portal, mostly your email address
--   secret - Password for the Discovergy portal
--   endpoint - see [docs](https://api.discovergy.com/docs/), **without slash**!
--   params - different for each endpoint
+- identifier - Login for the Inexogy portal, mostly your email address
+- secret - Password for the Inexogy portal
+- endpoint - see [docs](https://api.inexogy.com/docs/), **without slash**!
+- params - different for each endpoint
 
 The script return the API result as JSON string or the error trace on STDERR.
 

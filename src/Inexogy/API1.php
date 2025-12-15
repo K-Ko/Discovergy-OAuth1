@@ -1,6 +1,6 @@
 <?php
 
-namespace Discovergy;
+namespace Inexogy;
 
 use Exception;
 use OAuth1\Session;
@@ -11,11 +11,11 @@ use OAuth1\Session;
 final class API1
 {
     /**
-     * Discovergy API base URL
+     * Inexogy API base URL
      *
      * @var string
      */
-    public static $baseUrl = 'https://api.discovergy.com/public/v1';
+    public static $baseUrl = 'https://api.inexogy.com/public/v1';
 
     /**
      * OAuth1 session
@@ -43,7 +43,7 @@ final class API1
         // Clear file status cache
         clearstatcache();
 
-        // Discovergy credentials
+        // Inexogy credentials
         $this->client     = $client;
         $this->identifier = $identifier;
         $this->secret     = $secret;
@@ -59,9 +59,9 @@ final class API1
     /**
      * Init connection, authorize
      *
-     * @return \Discovergy\API1
+     * @return \Inexogy\API1
      */
-    public function init(): API1
+    public function init(): self
     {
         $cache = $this->cache . '/.oauth.' . $this->hash . '.json';
 
@@ -72,12 +72,14 @@ final class API1
         $locks = 0;
 
         while (file_exists($lock)) {
-            // Another process gets authorization from Discovergy
+            // Another process gets authorization from Inexogy
             usleep(100000); // 100 ms
             $locks++;
         }
 
         static::$debug && header('X-OAUTH-AUTHORIZATION-LOCKS: ' . $locks);
+
+        Session::$baseUrl = static::$baseUrl;
 
         if (is_file($cache)) {
             // Simple array
@@ -140,9 +142,9 @@ final class API1
      *
      * @throws Exception In case of invalid directory
      * @param string $cache Use system temp. directory if empty
-     * @return \Discovergy\API1
+     * @return \Inexogy\API1
      */
-    public function setCache(string $cache): API1
+    public function setCache(string $cache): self
     {
         if ($cache == '') {
             $this->cache = sys_get_temp_dir();
@@ -175,9 +177,9 @@ final class API1
      * Set cache TTL
      *
      * @param int $ttl seconds
-     * @return \Discovergy\API1
+     * @return \Inexogy\API1
      */
-    public function setTTL(int $ttl): API1
+    public function setTTL(int $ttl): self
     {
         // No negative values
         $this->ttl = max(0, $ttl);
@@ -198,7 +200,7 @@ final class API1
     /**
      * Read all known meters from DC
      *
-     * @return \Discovergy\Meters
+     * @return \Inexogy\Meters
      */
     public function getMeters(): Meters
     {
@@ -257,7 +259,7 @@ final class API1
      * Get meter details
      *
      * @param  string $meterId
-     * @return \Discovergy\Meter|null
+     * @return \Inexogy\Meter|null
      */
     public function getMeter($meterId)
     {
@@ -299,6 +301,11 @@ final class API1
     private $secret;
 
     /**
+     * @var int
+     */
+    private $ttl;
+
+    /**
      * @var string
      */
     private $hash;
@@ -309,7 +316,7 @@ final class API1
     private $cache;
 
     /**
-     * @var \Discovergy\Meters
+     * @var \Inexogy\Meters
      */
     private $meters;
 }

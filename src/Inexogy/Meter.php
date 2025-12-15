@@ -1,6 +1,6 @@
 <?php
 
-namespace Discovergy;
+namespace Inexogy;
 
 use BadMethodCallException;
 use JsonSerializable;
@@ -10,7 +10,7 @@ class Meter implements JsonSerializable
     /**
      * Class constructor
      *
-     * @param \Discovergy\API1 $api
+     * @param \Inexogy\API1 $api
      * @param object $data
      */
     public function __construct(API1 $api, object $data)
@@ -125,7 +125,7 @@ class Meter implements JsonSerializable
     // ----------------------------------------------------------------------
 
     /**
-     * @var \Discovergy\API1
+     * @var \Inexogy\API1
      */
     private $api;
 

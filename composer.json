@@ -1,9 +1,10 @@
 {
     "name": "k-ko/discovergy-oauth1",
     "type": "library",
-    "description": "Discovergy OAUTH 1.0 API client",
+    "description": "Inexogy (former Discovergy) OAUTH 1.0 API client",
     "keywords": [
         "Discovergy",
+        "Inexogy",
         "API",
         "OAuth1"
     ],
