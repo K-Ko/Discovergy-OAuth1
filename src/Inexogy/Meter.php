@@ -2,6 +2,40 @@
 
 namespace Inexogy;
 
+/**
+ * @property-read string city
+ * @property-read string address
+ * @property-read string fullSerialNumberShort
+ * @property-read string firstMeasurementDatetime
+ * @property-read string lastMeasurementDatetime
+ * @property-read string meterId
+ * @property-read string manufacturerId
+ * @property-read int serialNumber
+ * @property-read string fullSerialNumber
+ * @property-read array location
+ * @property-read string administrationNumber
+ * @property-read string type
+ * @property-read string measurementType
+ * @property-read string loadProfileType
+ * @property-read int scalingFactor
+ * @property-read int currentScalingFactor
+ * @property-read int voltageScalingFactor
+ * @property-read int internalMeters
+ * @property-read int firstMeasurementTime
+ * @property-read int lastMeasurementTime
+ *
+ * @method array getDevices()
+ * @method array getFieldNames()
+ * @method array getReadings()
+ * @method array getLastReading()
+ * @method array getStatistics()
+ * @method array getLoadProfile()
+ * @method array geRawLoadProfile()
+ * @method array getDisaggregation()
+ * @method array getActivities()
+ * @method array getWebsiteAccessCode()
+ * @method array getVirtualMeters()
+ */
 class Meter implements \JsonSerializable
 {
     /**
