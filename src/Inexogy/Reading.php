@@ -2,9 +2,7 @@
 
 namespace Inexogy;
 
-use JsonSerializable;
-
-class Reading implements JsonSerializable
+class Reading implements \JsonSerializable
 {
     /**
      * Class constructor

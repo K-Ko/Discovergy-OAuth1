@@ -2,10 +2,7 @@
 
 namespace Inexogy;
 
-use BadMethodCallException;
-use JsonSerializable;
-
-class Meter implements JsonSerializable
+class Meter implements \JsonSerializable
 {
     /**
      * Class constructor
@@ -16,6 +13,7 @@ class Meter implements JsonSerializable
     public function __construct(API1 $api, object $data)
     {
         $this->api = $api;
+
         // Convert data to an array
         $this->data = json_decode(json_encode($data), true);
     }
@@ -28,13 +26,19 @@ class Meter implements JsonSerializable
      */
     public function __get($name)
     {
+        if ($name == 'city') {
+            return $this->data['location']['city'] ?: 'VIRTUAL';
+        }
+
         if ($name == 'address') {
             $l = $this->data['location'];
 
             // Remove city district
-            $l['city'] = preg_replace('~ *([(]|OT) +.*$~', '', $l['city']);
+            $l['city'] = preg_replace('~ *(\(|OT) +.*$~', '', $l['city']);
 
-            return sprintf('%s %s, %s-%s %s', $l['street'], $l['streetNumber'], $l['country'], $l['zip'], $l['city']);
+            return $l['city']
+                ? sprintf('%s %s, %s-%s %s', $l['street'], $l['streetNumber'], $l['country'], $l['zip'], $l['city'])
+                : 'VIRTUAL';
         }
 
         if ($name == 'fullSerialNumberShort') {
@@ -100,7 +104,7 @@ class Meter implements JsonSerializable
             return $this->api->get($endpoint, $params);
         }
 
-        throw new BadMethodCallException('Invalid method call: ' . __CLASS__ . ':' . $name . '()');
+        throw new \BadMethodCallException('Invalid method call: ' . __CLASS__ . ':' . $name . '()');
     }
 
     /**

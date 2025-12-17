@@ -2,11 +2,7 @@
 
 namespace Inexogy;
 
-use ArrayAccess;
-use Iterator;
-use JsonSerializable;
-
-class Meters implements ArrayAccess, Iterator, JsonSerializable
+class Meters implements \ArrayAccess, \Iterator, \JsonSerializable
 {
     /**
      * ArrayAccess

@@ -2,9 +2,6 @@
 
 namespace Inexogy;
 
-use Exception;
-use InvalidArgumentException;
-
 /**
  * API OAuth 1.0
  */
@@ -53,11 +50,11 @@ final class API1
             $this->cache = sys_get_temp_dir();
         } else {
             if (!is_dir($cache) && !mkdir($cache, 0755, true)) {
-                throw new Exception('Can not create cache: ' . $cache);
+                throw new \Exception('Can not create cache: ' . $cache);
             }
 
             if (!is_dir($cache)) {
-                throw new Exception('Invalid cache: ' . $cache);
+                throw new \Exception('Invalid cache: ' . $cache);
             }
 
             $this->cache = $cache;
@@ -169,7 +166,7 @@ final class API1
         $meters = $this->getMeters();
 
         if (!isset($meters[$meterId])) {
-            throw new InvalidArgumentException('Unbekannte Zählernummer: ' . $meterId);
+            throw new \InvalidArgumentException('Unbekannte Zählernummer: ' . $meterId);
         }
 
         return $meters[$meterId];
