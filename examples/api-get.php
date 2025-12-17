@@ -42,11 +42,18 @@ foreach ($args as $arg) {
     $params[$param] = $value;
 }
 
+$cache = __DIR__ . '/../.cache';
+
 try {
-    $api = new Inexogy\API1('kko-inexogy-oauth1', $identifier, $secret);
-    $api->setCache(__DIR__ . '/../.cache');
-    $api->init();
-    fwrite($fh, "::: got a valid session\n");
+    $session = new OAuth1\Session('https://api.inexogy.com/public/v1');
+    $session->setCache($cache)->setTTL(3600)->authorize('kko-inexogy-oauth1', $identifier, $secret);
+
+    fwrite($fh, "::: Got a valid OAuth1 session instance\n");
+
+    $api = new Inexogy\API1($session);
+    $api->setCache($cache)->setTTL(3600);
+
+    fwrite($fh, "::: Got a valid API instance\n");
 } catch (Exception $e) {
     fwrite($fh, "::: ERROR: " . $e->getMessage());
     exit;
@@ -57,9 +64,9 @@ fwrite($fh, "::: Fetch endpoint /$endpoint ...\n");
 $res = $api->get($endpoint, $params);
 
 if ($res) {
-    echo "\nDEBUG:\n\n", json_encode($api::$session::$debug, JSON_PRETTY_PRINT);
+    echo "\nDEBUG:\n\n", json_encode($api->getSession()->debug, JSON_PRETTY_PRINT);
     echo "\n\nRESULT:\n\n", json_encode($res, JSON_PRETTY_PRINT);
 } else {
     fwrite($fh, "::: ERROR\n");
-    fwrite($fh, implode(PHP_EOL, $api::$session::$debug));
+    fwrite($fh, implode(PHP_EOL, $api->getSession()->debug));
 }

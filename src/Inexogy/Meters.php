@@ -105,7 +105,7 @@ class Meters implements ArrayAccess, Iterator, JsonSerializable
     private $position = 0;
 
     /**
-     * @var array
+     * @var \Inexogy\Meter[]
      */
     private $meters = [];
 }

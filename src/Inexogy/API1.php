@@ -3,7 +3,7 @@
 namespace Inexogy;
 
 use Exception;
-use OAuth1\Session;
+use InvalidArgumentException;
 
 /**
  * API OAuth 1.0
@@ -11,130 +11,33 @@ use OAuth1\Session;
 final class API1
 {
     /**
-     * Inexogy API base URL
-     *
-     * @var string
-     */
-    public static $baseUrl = 'https://api.inexogy.com/public/v1';
-
-    /**
-     * OAuth1 session
-     *
-     * @var \OAuth1\Session
-     */
-    public static $session;
-
-    /**
-     * Add some headers
-     *
-     * @var boolean
-     */
-    public static $debug = false;
-
-    /**
      * Class constructor
      *
-     * @param string   $client
-     * @param string   $identifier
-     * @param string   $secret
+     * @param \OAuth1\Session $session
      */
-    public function __construct(string $client, string $identifier, string $secret)
+    public function __construct($session, string $baseUrl = 'https://api.inexogy.com/public/v1')
     {
+        $this->session = $session;
+        $this->baseUrl = $baseUrl;
+
+        // Unique hash for the OAuth1 session
+        $this->hash = substr(md5(json_encode($session->getSecrets())), 0, 16);
+
+        // Don't cache by default
+        $this->setCache()->setTTL(0);
+
         // Clear file status cache
         clearstatcache();
-
-        // Inexogy credentials
-        $this->client     = $client;
-        $this->identifier = $identifier;
-        $this->secret     = $secret;
-
-        // Cache defaults to system temp. dir and TTL of 1 hour
-        $this->cache = sys_get_temp_dir();
-        $this->ttl   = 3600;
-
-        // Unique hash for actual identifier, all requests can share the OAuth session
-        $this->hash  = substr(md5($identifier), 0, 16);
     }
 
     /**
-     * Init connection, authorize
+     * Get session
      *
-     * @return \Inexogy\API1
+     * @return \OAuth1\Session
      */
-    public function init(): self
+    public function getSession()
     {
-        $cache = $this->cache . '/.oauth.' . $this->hash . '.json';
-
-        // OAuth data, force re-reread if needed
-        is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
-
-        $lock  = $this->cache . '/.oauth.' . $this->hash . '.lock';
-        $locks = 0;
-
-        while (file_exists($lock)) {
-            // Another process gets authorization from Inexogy
-            usleep(100000); // 100 ms
-            $locks++;
-        }
-
-        static::$debug && header('X-OAUTH-AUTHORIZATION-LOCKS: ' . $locks);
-
-        Session::$baseUrl = static::$baseUrl;
-
-        if (is_file($cache)) {
-            // Simple array
-            static::$session = new Session(...json_decode(file_get_contents($cache)));
-            static::$debug && header('X-OAUTH-AUTHORIZATION-CACHE: true');
-
-            return $this;
-        }
-
-        // Start authorization
-        touch($lock);
-
-        // Handle parallel requests, only one have to try to authorize!
-        $loop = 0;
-
-        // Endles loop, break condition inside
-        do {
-            try {
-                static::$session = Session::authorize($this->client, $this->identifier, $this->secret);
-                break; // Success, break while
-            } catch (Exception $e) {
-                if ($loop < 5) {
-                    // Sleep a bit to give API chance to answer
-                    sleep(++$loop);
-                    continue;
-                }
-
-                unlink($lock);
-                throw new Exception('Session creation failed, ' . $e->getMessage());
-            }
-        } while (true);
-
-        // Save if a cache file name is given
-        file_put_contents($cache, json_encode(static::$session->getSecrets()));
-
-        // Unlock
-        unlink($lock);
-
-        return $this;
-    }
-
-    /**
-     * Set cache or TTL via setters
-     *
-     * @param string $name
-     * @param string $value
-     * @return void
-     */
-    public function __set($name, $value)
-    {
-        if ($name === 'cache') {
-            $this->setCache($value);
-        } elseif ($name === 'ttl') {
-            $this->setTTL($value);
-        }
+        return $this->session;
     }
 
     /**
@@ -144,7 +47,7 @@ final class API1
      * @param string $cache Use system temp. directory if empty
      * @return \Inexogy\API1
      */
-    public function setCache(string $cache): self
+    public function setCache(string $cache = ''): self
     {
         if ($cache == '') {
             $this->cache = sys_get_temp_dir();
@@ -220,11 +123,8 @@ final class API1
                 $locks++;
             }
 
-            static::$debug && header('X-OAUTH-METER-LOCKS: ' . $locks);
-
             if (is_file($cache)) {
                 $meters = json_decode(file_get_contents($cache));
-                static::$debug && header('X-OAUTH-METER-CACHE: true');
             } else {
                 // Start authorization
                 touch($lock);
@@ -258,15 +158,21 @@ final class API1
     /**
      * Get meter details
      *
+     * @throws \InvalidArgumentException For unknown meter Id
+     *
      * @param  string $meterId
-     * @return \Inexogy\Meter|null
+     * @return \Inexogy\Meter
      */
     public function getMeter($meterId)
     {
         // Lazy load meters on request
         $meters = $this->getMeters();
 
-        return $meters[$meterId] ?? null;
+        if (!isset($meters[$meterId])) {
+            throw new InvalidArgumentException('Unbekannte Zählernummer: ' . $meterId);
+        }
+
+        return $meters[$meterId];
     }
 
     /**
@@ -278,7 +184,7 @@ final class API1
      */
     public function get(string $endpoint, array $params = [])
     {
-        return json_decode(static::$session->get(static::$baseUrl . '/' . $endpoint, $params));
+        return json_decode($this->session->get($this->baseUrl . '/' . $endpoint, $params));
     }
 
     // --------------------------------------------------------------------
@@ -286,19 +192,18 @@ final class API1
     // --------------------------------------------------------------------
 
     /**
-     * @var string
+     * OAuth1 session
+     *
+     * @var \OAuth1\Session
      */
-    private $client;
+    private $session;
 
     /**
+     * Inexogy API base URL
+     *
      * @var string
      */
-    private $identifier;
-
-    /**
-     * @var string
-     */
-    private $secret;
+    private $baseUrl;
 
     /**
      * @var int

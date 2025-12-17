@@ -2,6 +2,7 @@
 
 namespace OAuth1;
 
+use DateTimeImmutable;
 use Exception;
 
 /**
@@ -10,59 +11,72 @@ use Exception;
 final class Session
 {
     /**
-     * Inexogy API base URL
-     *
-     * @var string
-     */
-    public static $baseUrl;
-
-    /**
      * @var array Debug messages
      */
-    public static $debug = [];
+    public $debug = [];
 
     /**
      * @var array
      */
-    public static $curlInfo = [];
+    public $curlInfo = [];
 
     /**
      * Class constructor
      *
-     * @param  string  $consumerKey
-     * @param  string  $consumerSecret
-     * @param  string  $token
-     * @param  string  $tokenSecret
+     * @param string $baseUrl
      */
-    public function __construct($consumerKey, $consumerSecret, $token, $tokenSecret)
+    public function __construct(string $baseUrl)
     {
-        $this->consumerKey    = $consumerKey;
-        $this->consumerSecret = $consumerSecret;
-        $this->token          = $token;
-        $this->tokenSecret    = $tokenSecret;
+        $this->setBaseUrl($baseUrl);
+
+        // Don't cache by default
+        $this->setCache()->setTTL(0);
+
+        $this->curl = curl_init();
     }
 
     /**
-     * Authorize client and return valid session
+     * Authorize client
      *
-     * @throws Exception
+     * @throws \Exception On any kind of error
+     *
      * @param  string $client
      * @param  string $identifier
      * @param  string $secret
-     * @return \KKo\OAuth1\Session
+     * @return void
      */
-    public static function authorize($client, $identifier, $secret)
+    public function authorize($client, $identifier, $secret)
     {
+        if ($this->ttl > 0) {
+            // Unique hash for actual identifier, all requests can share the OAuth session
+            $cache = $this->cache . '/.oauth.' . substr(md5($identifier), 0, 16) . '.json';
+
+            // OAuth data, force re-reread if needed
+            is_file($cache) && filemtime($cache) < time() - $this->ttl && unlink($cache);
+
+            if (is_file($cache)) {
+                // Simple array
+                [$this->consumerKey, $this->consumerSecret, $this->token, $this->tokenSecret] =
+                    json_decode(file_get_contents($cache), true);
+
+                $this->dbg('AUTH', ':', 'Authorization from cache');
+
+                return;
+            }
+        }
+
+        $this->dbg('AUTH', ':', 'Authorize');
+
         // ------------------------------------------------------------------
         // 1. Get consumer token
         // ------------------------------------------------------------------
 
-        $url    = static::$baseUrl . '/oauth1/consumer_token';
+        $url    = $this->baseUrl . '/oauth1/consumer_token';
         $fields = ['client' => $client];
-        $res    = json_decode(static::curlPost($url, $fields), true);
+        $res    = json_decode($this->fetchPost($url, $fields), true);
 
         if (!isset($res['key'], $res['secret'])) {
-            throw new Exception('Get customer token failed (1) ' . json_encode(static::getLastCurlInfo()));
+            throw new Exception('Get customer token failed (1) ' . json_encode($this->getLastCurlInfo()));
         }
 
         $consumerKey    = $res['key'];
@@ -72,17 +86,17 @@ final class Session
         // 2. Get request token
         // ------------------------------------------------------------------
 
-        $url    = static::$baseUrl . '/oauth1/request_token';
-        $fields = static::getBaseOauthFields($consumerKey);
+        $url    = $this->baseUrl . '/oauth1/request_token';
+        $fields = $this->getBaseOauthFields($consumerKey);
 
-        $fields['oauth_signature'] = static::sign('POST', $url, $fields, $consumerSecret . '&');
+        $fields['oauth_signature'] = $this->sign('POST', $url, $fields, $consumerSecret . '&');
 
-        $res = static::curlPost($url, $fields);
+        $res = $this->fetchPost($url, $fields);
 
         parse_str($res, $res);
 
         if (!isset($res['oauth_token'], $res['oauth_token_secret'])) {
-            throw new Exception('Get request token failed (2) ' . json_encode(static::getLastCurlInfo()));
+            throw new Exception('Get request token failed (2) ' . json_encode($this->getLastCurlInfo()));
         }
 
         // Internal used for steps 3 & 4
@@ -93,19 +107,15 @@ final class Session
         // 3. Authorize user
         // ------------------------------------------------------------------
 
-        $url    = static::$baseUrl . '/oauth1/authorize';
-        $fields = [
-            'oauth_token' => $token,
-            'email'       => $identifier,
-            'password'    => $secret,
-        ];
+        $url    = $this->baseUrl . '/oauth1/authorize';
+        $fields = ['oauth_token' => $token, 'email' => $identifier, 'password' => $secret];
 
-        $res = static::curlGet($url, $fields);
+        $res = $this->fetchGet($url, $fields);
 
         parse_str($res, $res);
 
         if (!isset($res['oauth_verifier'])) {
-            throw new Exception('Authorize user failed (3) ' . json_encode(static::getLastCurlInfo()));
+            throw new Exception('Authorize user failed (3) ' . json_encode($this->getLastCurlInfo()));
         }
 
         $oauthVerifier = $res['oauth_verifier'];
@@ -114,39 +124,49 @@ final class Session
         // 4. Get access token
         // ------------------------------------------------------------------
 
-        $url = static::$baseUrl . '/oauth1/access_token';
+        $url = $this->baseUrl . '/oauth1/access_token';
 
-        $fields = static::getBaseOauthFields($consumerKey);
+        $fields = $this->getBaseOauthFields($consumerKey);
         $fields['oauth_token']     = $token;
         $fields['oauth_verifier']  = $oauthVerifier;
 
-        $fields['oauth_signature'] = static::sign('POST', $url, $fields, $consumerSecret . '&' . $tokenSecret);
+        $fields['oauth_signature'] = $this->sign('POST', $url, $fields, $consumerSecret . '&' . $tokenSecret);
 
-        $res = static::curlPost($url, $fields);
+        $res = $this->fetchPost($url, $fields);
 
         parse_str($res, $res);
 
         if (!isset($res['oauth_token'], $res['oauth_token_secret'])) {
-            throw new Exception('Get access token failed (4) ' . json_encode(static::getLastCurlInfo()));
+            throw new Exception('Get access token failed (4) ' . json_encode($this->getLastCurlInfo()));
         }
 
-        return new self($consumerKey, $consumerSecret, $res['oauth_token'], $res['oauth_token_secret']);
+        $this->consumerKey    = $consumerKey;
+        $this->consumerSecret = $consumerSecret;
+        $this->token          = $res['oauth_token'];
+        $this->tokenSecret    = $res['oauth_token_secret'];
+
+        // Save if a cache file name is given
+        $this->ttl > 0 && file_put_contents($cache, json_encode($this->getSecrets()));
+
+        $this->dbg('AUTH', ':', 'Authorized');
+    }
+
+    /**
+     * Needed for cache credentials extern for reuse
+     *
+     * @return array
+     */
+    public function getSecrets()
+    {
+        return [$this->consumerKey, $this->consumerSecret, $this->token, $this->tokenSecret];
     }
 
     /**
      * Get last cUrl info data
      */
-    public static function getLastCurlInfo()
+    public function getLastCurlInfo()
     {
-        return count(static::$curlInfo) ? static::$curlInfo[count(static::$curlInfo) - 1] : null;
-    }
-
-    /**
-     * Needed for cache credentials extern for reuse
-     */
-    public function getSecrets()
-    {
-        return [$this->consumerKey, $this->consumerSecret, $this->token, $this->tokenSecret];
+        return count($this->curlInfo) ? $this->curlInfo[count($this->curlInfo) - 1] : null;
     }
 
     /**
@@ -158,22 +178,184 @@ final class Session
      */
     public function get($url, $params = [])
     {
-        $fields = static::getBaseOauthFields($this->consumerKey);
-        $fields['oauth_token'] = $this->token;
+        $fields = $this->getBaseOauthFields($this->consumerKey);
         $fields = array_replace($fields, $params);
 
-        $fields['oauth_signature'] = static::sign(
+        $fields['oauth_token'] = $this->token;
+        $fields['oauth_signature'] = $this->sign(
             'GET',
             $url,
             $fields,
             $this->consumerSecret . '&' . $this->tokenSecret
         );
 
-        return static::curlGet(
-            $url,
-            $params,
-            ['Content-Type: application/json', static::OAuthHeader($fields)]
+        return $this->fetchGet($url, $params, ['Content-Type: application/json', $this->OAuthHeader($fields)]);
+    }
+
+    /**
+     * Set $baseUrl
+     *
+     * @param  string $baseUrl
+     * @return \OAuth1\Session
+     */
+    public function setBaseUrl(string $baseUrl): self
+    {
+        $this->baseUrl = $baseUrl;
+
+        return $this;
+    }
+
+    /**
+     * Set cache, creates directory if not exist
+     *
+     * @throws Exception In case of invalid directory
+     *
+     * @param  string $cache Use system temp. directory if empty
+     * @return \OAuth1\Session
+     */
+    public function setCache(string $cache = ''): self
+    {
+        if ($cache == '') {
+            $this->cache = sys_get_temp_dir();
+        } else {
+            if (!is_dir($cache) && !mkdir($cache, 0755, true)) {
+                throw new Exception('Can not create cache: ' . $cache);
+            }
+
+            if (!is_dir($cache)) {
+                throw new Exception('Invalid cache: ' . $cache);
+            }
+
+            $this->cache = $cache;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Get cache directory
+     *
+     * @return string
+     */
+    public function getCache(): string
+    {
+        return $this->cache;
+    }
+
+    /**
+     * Set cache TTL
+     *
+     * @param  int $ttl seconds
+     * @return \OAuth1\Session
+     */
+    public function setTTL(int $ttl): self
+    {
+        // No negative values
+        $this->ttl = max(0, $ttl);
+
+        return $this;
+    }
+
+    /**
+     * Get cache TTL seconds
+     *
+     * @return int
+     */
+    public function getTTL(): int
+    {
+        return $this->ttl;
+    }
+
+    // --------------------------------------------------------------------
+    // PRIVATE
+    // --------------------------------------------------------------------
+
+    /**
+     * base API URL
+     *
+     * @var string
+     */
+    private $baseUrl;
+
+    /**
+     * @var string
+     */
+    private $consumerKey;
+
+    /**
+     * @var string
+     */
+    private $consumerSecret;
+
+    /**
+     * @var string
+     */
+    private $token;
+
+    /**
+     * @var string
+     */
+    private $tokenSecret;
+
+    /**
+     * @var string
+     */
+    private $cache;
+
+    /**
+     * @var int
+     */
+    private $ttl;
+
+    /**
+     * @var \CurlHandle|ressource
+     */
+    private $curl;
+
+    /**
+     * Debugger
+     *
+     * @param  string  $method
+     * @param  mixed   ...$args
+     * @return void
+     */
+    private function dbg($method, ...$args)
+    {
+        $this->debug[] = sprintf(
+            '[%s] %-4s %s',
+            (new DateTimeImmutable())->format('H:i:s.u'),
+            $method,
+            implode(
+                ' ',
+                array_map(function ($arg) {
+                    return is_scalar($arg) ? $arg : json_encode($arg);
+                }, $args)
+            )
         );
+    }
+
+    /**
+     * Build OAuth header from fields
+     *
+     * @param  array   $fields
+     * @return string
+     */
+    private function OAuthHeader($fields)
+    {
+        $auth = [];
+
+        foreach ($fields as $key => $value) {
+            // Only parameters starting with "oauth_" are relevant!
+            if (preg_match('~^oauth_~', $key)) {
+                $auth[] = sprintf('%s="%s"', $key, $value);
+            }
+        }
+
+        $auth = 'Authorization: OAuth ' . implode(',', $auth);
+
+        $this->dbg('HEAD', '-', $auth);
+
+        return $auth;
     }
 
     /**
@@ -182,7 +364,7 @@ final class Session
      * @param  string  $consumerKey
      * @return array
      */
-    public static function getBaseOauthFields($consumerKey)
+    private function getBaseOauthFields($consumerKey)
     {
         /**
          * Build unique nonce
@@ -212,28 +394,28 @@ final class Session
     /**
      * Sign request
      *
-     * @param  string  $set
+     * @param  string  $method
      * @param  string  $url
      * @param  array   $fields
      * @param  string  $secret
      * @return string
      */
-    public static function sign($set, $url, $fields, $secret)
+    private function sign($method, $url, $fields, $secret)
     {
         $url = urlencode($url);
 
         ksort($fields);
 
         $fields = urlencode(http_build_query($fields));
-        $data   = "$set&$url&$fields";
+        $data   = "$method&$url&$fields";
 
-        static::dbg('SIGN', '>', $data);
+        $this->dbg('SIGN', '>', $data);
 
         // Get binary and encode afterwards
         $hash = hash_hmac('sha1', $data, $secret, true);
         $hash = base64_encode($hash);
 
-        static::dbg('SIGN', '<', $hash);
+        $this->dbg('SIGN', '<', $hash);
 
         return $hash;
     }
@@ -246,9 +428,9 @@ final class Session
      * @param  array          $headers
      * @return string
      */
-    public static function curlGet($url, $fields = null, $headers = null)
+    private function fetchGet(string $url, $fields = null, array $headers = [])
     {
-        return static::curlFetch(false, $url, $fields, $headers);
+        return $this->fetch('GET', $url, $fields, $headers);
     }
 
     /**
@@ -259,76 +441,9 @@ final class Session
      * @param  array         $headers
      * @return string
      */
-    public static function curlPost($url, $fields = null, $headers = null)
+    private function fetchPost(string $url, $fields = null, array $headers = [])
     {
-        return static::curlFetch(true, $url, $fields, $headers);
-    }
-
-    // --------------------------------------------------------------------
-    // PROTECTED
-    // --------------------------------------------------------------------
-
-    /**
-     * Build OAuth header from fields
-     *
-     * @param  array   $fields
-     * @return string
-     */
-    protected static function OAuthHeader($fields)
-    {
-        $auth = [];
-
-        foreach ($fields as $key => $value) {
-            // Only parameters starting with "oauth_" are relevant!
-            if (preg_match('~^oauth_~', $key)) {
-                $auth[] = sprintf('%s="%s"', $key, $value);
-            }
-        }
-
-        $auth = 'Authorization: OAuth ' . implode(',', $auth);
-
-        static::dbg('HEAD', '-', $auth);
-
-        return $auth;
-    }
-
-    // --------------------------------------------------------------------
-    // PRIVATE
-    // --------------------------------------------------------------------
-
-    /**
-     * @var string
-     */
-    private $consumerKey;
-
-    /**
-     * @var string
-     */
-    private $consumerSecret;
-
-    /**
-     * @var string
-     */
-    private $token;
-
-    /**
-     * @var string
-     */
-    private $tokenSecret;
-
-    /**
-     * Debugger
-     *
-     * @param  string  $method
-     * @return void
-     */
-    private static function dbg($method, ...$args)
-    {
-        $args = array_map(function ($arg) {
-            return is_scalar($arg) ? $arg : json_encode($arg);
-        }, $args);
-
-        static::$debug[] = sprintf('%-4s %s', $method, implode(' ', $args));
+        return $this->fetch('POST', $url, $fields, $headers);
     }
 
     /**
@@ -340,22 +455,20 @@ final class Session
      * @param  array         $headers
      * @return string
      */
-    private static function curlFetch($isPOST, $url, $fields, $headers)
+    private function fetch(string $method, string $url, $fields, array $headers): string
     {
-        $ch = curl_init();
+        curl_reset($this->curl);
 
-        $method = $isPOST ? 'POST' : 'GET';
-
-        static::dbg($method, '>', $url);
+        $this->dbg($method, '>', $url);
 
         if (!empty($headers)) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            static::dbg($method, '> Headers:', $headers);
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
+            $this->dbg($method, '> Headers:', $headers);
         }
 
-        static::dbg($method, '> Fields:', $fields);
+        $this->dbg($method, '> Fields:', $fields);
 
-        if (!$isPOST) {
+        if ($method !== 'POST') {
             if ($fields) {
                 if (is_array($fields)) {
                     $fields = http_build_query($fields);
@@ -363,27 +476,25 @@ final class Session
                 $url .= '?' . $fields;
             }
         } else {
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($fields));
+            curl_setopt($this->curl, CURLOPT_POST, true);
+            curl_setopt($this->curl, CURLOPT_POSTFIELDS, http_build_query($fields));
         }
 
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($this->curl, CURLOPT_URL, $url);
+        curl_setopt($this->curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
 
         $ts  = -microtime(true);
-        $res = curl_exec($ch);
+        $res = curl_exec($this->curl);
         $ts += microtime(true);
 
-        $info = curl_getinfo($ch);
+        $info = curl_getinfo($this->curl);
 
-        curl_close($ch);
+        $this->curlInfo[] = $info;
 
-        static::$curlInfo[] = $info;
-
-        static::dbg($method, '< curl', round($ts * 1000, 3), 'ms');
-        static::dbg($method, '<', $res);
-        static::dbg($method, '<', $info);
+        $this->dbg($method, '< curl', round($ts * 1000, 3), 'ms');
+        $this->dbg($method, '<', $res);
+        $this->dbg($method, '<', $info);
 
         return $res;
     }
